@@ -841,9 +841,9 @@ function CategoryFormItem({ form, categoryIndex }: { form: ReturnType<typeof use
                       name={`categories.${categoryIndex}.elements.${elementIndex}.material_cost`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Material Cost Formula</FormLabel>
+                          <FormLabel>Material</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., $5 * square_feet" {...field} />
+                            <Input placeholder="e.g., $5" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -854,9 +854,9 @@ function CategoryFormItem({ form, categoryIndex }: { form: ReturnType<typeof use
                       name={`categories.${categoryIndex}.elements.${elementIndex}.labor_cost`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Labor Cost Formula</FormLabel>
+                          <FormLabel>Labor Cost</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., $2 * square_feet" {...field} />
+                            <Input placeholder="e.g., $2" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

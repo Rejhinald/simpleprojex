@@ -349,7 +349,7 @@ export function ProposalVariables({ proposalId, variables, onRefresh }: Proposal
             <DialogDescription>
               {editingVariableId
                 ? "Update the details for this variable."
-                : "Variables can be used in element cost formulas."}
+                : "Variables allow you to parameterize your proposal."}
             </DialogDescription>
           </DialogHeader>
           <Form {...variableForm}>

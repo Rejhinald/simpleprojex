@@ -112,8 +112,8 @@ const elementSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   material_cost: z
     .string()
-    .min(1, { message: "Material cost formula is required." }),
-  labor_cost: z.string().min(1, { message: "Labor cost formula is required." }),
+    .min(1, { message: "Material cost is required." }),
+  labor_cost: z.string().min(1, { message: "Labor cost is required." }),
   markup_percentage: z.number().min(0).max(100),
   position: z.number().int().min(0),
   categoryId: z.number().positive(),
@@ -1851,7 +1851,7 @@ export default function TemplateDetailPage() {
             <DialogDescription>
               {editingVariableId
                 ? "Update the details for this variable."
-                : "Variables can be used in element cost formulas."}
+                : "Variables can be used to parameterize your template."}
             </DialogDescription>
           </DialogHeader>
           <Form {...variableForm}>
@@ -2122,9 +2122,9 @@ export default function TemplateDetailPage() {
                   name="material_cost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Material Cost Formula</FormLabel>
+                      <FormLabel>Material Cost</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 5 * Room_Size" {...field} />
+                        <Input placeholder="e.g., 5" {...field} />
                       </FormControl>
                       <FormDescription>
                         Can use variables like &apos;Room_Size&apos;.
@@ -2138,9 +2138,9 @@ export default function TemplateDetailPage() {
                   name="labor_cost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Labor Cost Formula</FormLabel>
+                      <FormLabel>Labor Cost</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 3 * Room_Size" {...field} />
+                        <Input placeholder="e.g., 3" {...field} />
                       </FormControl>
                       <FormDescription>
                         Can use variables like &apos;Room_Size&apos;.

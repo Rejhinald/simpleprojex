@@ -747,12 +747,12 @@ export function ProposalElements({
                   name="material_cost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Material Cost Formula</FormLabel>
+                      <FormLabel>Material Cost</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 50 or roomSize * 5" {...field} />
+                        <Input placeholder="e.g., 50" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Fixed value or formula using variable names.
+                        Fixed value
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -764,12 +764,12 @@ export function ProposalElements({
                   name="labor_cost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Labor Cost Formula</FormLabel>
+                      <FormLabel>Labor Cost</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 75 or roomSize * 2.5" {...field} />
+                        <Input placeholder="e.g., 75" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Fixed value or formula using variable names.
+                        Fixed value
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
