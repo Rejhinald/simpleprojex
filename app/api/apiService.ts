@@ -222,14 +222,23 @@ export function getSignatureImageUrl(signaturePath: string | null): string {
   
   // If it's already a full URL, return it
   if (signaturePath.startsWith('http')) {
+    // Ensure we're using the S3 URL
+    if (signaturePath.includes('pythonanywhere')) {
+      // Convert PythonAnywhere URL to S3 URL
+      const cleanPath = signaturePath
+        .replace(/^.*?media\//, '') // Remove everything before media/
+        .replace(/^\/+/, '');       // Remove leading slashes
+      return `https://arwin-simpleprojex.s3.ap-southeast-1.amazonaws.com/media/${cleanPath}`;
+    }
     return signaturePath;
   }
   
-  // Remove any existing media prefix to avoid duplication
-  const cleanPath = signaturePath.replace(/^media\//, '');
+  // Clean the path and construct S3 URL
+  const cleanPath = signaturePath
+    .replace(/^media\//, '')
+    .replace(/^\/+/, '');
   
-  // Add the media prefix only once
-  return `https://rejhinald.pythonanywhere.com/${cleanPath}`;
+  return `https://arwin-simpleprojex.s3.ap-southeast-1.amazonaws.com/media/${cleanPath}`;
 }
 
 
