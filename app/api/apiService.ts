@@ -205,15 +205,24 @@ async function deleteData<R>(endpoint: string): Promise<R> {
 
 // Add this helper function for FormData file uploads
 async function uploadFile<R>(endpoint: string, formData: FormData): Promise<R> {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: 'POST',
-    // No Content-Type header is needed as the browser will set it with the correct boundary for FormData
-    body: formData,
-  });
-  if (!response.ok) {
-    throw new Error(`API error: ${response.statusText}`);
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      // No Content-Type header is needed as the browser will set it with the correct boundary for FormData
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Upload error:', errorText);
+      throw new Error(`API error: ${response.statusText}`);
+    }
+
+    return response.json() as Promise<R>;
+  } catch (error) {
+    console.error('Upload error:', error);
+    throw error;
   }
-  return response.json() as Promise<R>;
 }
 
 // Add a helper function to construct a full URL for signature images
@@ -456,17 +465,43 @@ export const contractApi = {
   delete: (id: number) => deleteData<unknown>(`/contracts/${id}`),
   
   // Add file upload methods for signatures
-  uploadClientSignature: (id: number, file: File, initials: string) => {
-    const formData = new FormData();
-    formData.append('signature_file', file);
-    formData.append('initials', initials);
-    return uploadFile<Contract>(`/contracts/${id}/upload-client-signature`, formData);
+  uploadClientSignature: async (id: number, file: File, initials: string) => {
+    try {
+      const formData = new FormData();
+      formData.append('signature_file', file);
+      formData.append('initials', initials);
+      
+      const result = await uploadFile<Contract>(`/contracts/${id}/upload-client-signature`, formData);
+      
+      // Verify the response contains the signature URL
+      if (!result.client_signature) {
+        throw new Error('No signature URL in response');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error uploading client signature:', error);
+      throw error;
+    }
   },
   
-  uploadContractorSignature: (id: number, file: File, initials: string) => {
-    const formData = new FormData();
-    formData.append('signature_file', file);
-    formData.append('initials', initials);
-    return uploadFile<Contract>(`/contracts/${id}/upload-contractor-signature`, formData);
+  uploadContractorSignature: async (id: number, file: File, initials: string) => {
+    try {
+      const formData = new FormData();
+      formData.append('signature_file', file);
+      formData.append('initials', initials);
+      
+      const result = await uploadFile<Contract>(`/contracts/${id}/upload-contractor-signature`, formData);
+      
+      // Verify the response contains the signature URL
+      if (!result.contractor_signature) {
+        throw new Error('No signature URL in response');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error uploading contractor signature:', error);
+      throw error;
+    }
   }
 };
