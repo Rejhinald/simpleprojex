@@ -314,7 +314,7 @@ export function CreateProposalDialog({
           }
   
           // Then create elements with their categories
-          const elementValues = values.categories.flatMap((category, categoryIndex) => 
+          const elementValues = values.categories.flatMap((category) => 
             (category.elements || []).map((element, elementIndex) => ({
               element_id: -(elementIndex + 1), // Use unique negative IDs
               element_name: element.name,
