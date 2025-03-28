@@ -13,12 +13,38 @@ import { NavigationLoader } from "@/components/navigation-loader";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { NavigationEvents } from "@/components/navigation-events";
+import { usePathname } from "next/navigation";
 
 const inter = Inter({ subsets: ["latin"] });
 
 interface RootLayoutProps {
   children: ReactNode;
 }
+
+// Title component that updates the document title based on the current path
+const DynamicTitle = () => {
+  const pathname = usePathname();
+  
+  useEffect(() => {
+    let title = "Simple ProjeX";
+    
+    if (pathname) {
+      if (pathname.includes("/templates")) {
+        title = "Simple ProjeX | Templates";
+      } else if (pathname.includes("/proposals")) {
+        title = "Simple ProjeX | Proposals";
+      } else if (pathname.includes("/contracts")) {
+        title = "Simple ProjeX | Contracts";
+      } else if (pathname.includes("/dashboard")) {
+        title = "Simple ProjeX | Dashboard";
+      }
+    }
+    
+    document.title = title;
+  }, [pathname]);
+  
+  return null;
+};
 
 // This adds a fixed CSS style to fix the background width
 const FixedStyles = () => {
@@ -106,10 +132,16 @@ const MainContentWrapper = ({ children }: { children: ReactNode }) => (
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>Simple ProjeX</title>
+      </head>
       <body className={cn("antialiased", inter.className)}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <NavigationProvider>
             <SidebarContextProvider>
+              {/* Title component that updates based on route */}
+              <DynamicTitle />
+              
               {/* Navigation event listener with Suspense */}
               <NavigationWrapper />
               

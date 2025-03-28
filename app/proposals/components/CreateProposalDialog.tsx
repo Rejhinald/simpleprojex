@@ -15,6 +15,7 @@ import {
   X,
   Search,
   RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +55,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { proposalApi, templateApi, Template, categoryApi } from "../../api/apiService";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +131,10 @@ export function CreateProposalDialog({
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isDialogMounted, setIsDialogMounted] = useState(false);
   const [templateSearchTerm, setTemplateSearchTerm] = useState("");
+  const [validationErrors, setValidationErrors] = useState<{
+    variables?: string;
+    categories?: string;
+  }>({});
   const templatesLoadedRef = useRef(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -145,6 +151,13 @@ export function CreateProposalDialog({
 
   const creationType = form.watch("creationType");
   const selectedTemplateId = form.watch("templateId");
+  const variables = form.watch("variables") || [];
+  const categories = form.watch("categories") || [];
+
+  // Clear validation errors when tab changes or creation type changes
+  useEffect(() => {
+    setValidationErrors({});
+  }, [activeTab, creationType]);
 
   // Pre-load templates - this will be awaited before dialog shows content
   const loadTemplates = useCallback(async () => {
@@ -190,8 +203,9 @@ export function CreateProposalDialog({
         categories: [],
       });
 
-      // Clear template search term
+      // Clear template search term and validation errors
       setTemplateSearchTerm("");
+      setValidationErrors({});
 
       // Then open the dialog immediately with the fixed size
       setIsOpen(true);
@@ -214,8 +228,9 @@ export function CreateProposalDialog({
         setIsDialogMounted(false);
         // Reset form values when dialog is closed
         form.reset();
-        // Reset template search
+        // Reset template search and errors
         setTemplateSearchTerm("");
+        setValidationErrors({});
       }, 200);
     }
   };
@@ -229,6 +244,7 @@ export function CreateProposalDialog({
         // Clear variables and categories when switching to template mode
         form.setValue("variables", []);
         form.setValue("categories", []);
+        setValidationErrors({});
 
         // Select first template when switching to template mode if none is selected
         if (templates.length > 0 && !form.getValues("templateId")) {
@@ -237,11 +253,100 @@ export function CreateProposalDialog({
       } else if (creationType === "fromScratch") {
         // Clear template selection when switching to from scratch
         form.setValue("templateId", null);
+        setValidationErrors({});
       }
     }, 50);
 
     return () => clearTimeout(timer);
   }, [creationType, templates, form, isDialogMounted]);
+
+  // Validate form data based on current tab and creation type
+  const validateCurrentTab = (): boolean => {
+    // Reset errors
+    setValidationErrors({});
+    
+    // For template creation, just validate basic info
+    if (creationType === "fromTemplate") {
+      return true;
+    }
+    
+    // For from scratch, validate based on current tab
+    if (activeTab === "basic") {
+      return true; // Basic tab validation is handled by form.trigger in goToNextTab
+    } 
+    else if (activeTab === "variables") {
+      if (variables.length === 0) {
+        setValidationErrors({
+          variables: "Please add at least one variable before proceeding"
+        });
+        return false;
+      }
+      
+      // Check if all variables have names
+      const emptyNameVariables = variables.some(v => !v.name.trim());
+      if (emptyNameVariables) {
+        setValidationErrors({
+          variables: "All variables must have names"
+        });
+        return false;
+      }
+      
+      return true;
+    } 
+    else if (activeTab === "categories") {
+      // For final submission, validate everything
+      
+      // First check if variables exist
+      if (variables.length === 0) {
+        setValidationErrors({
+          variables: "Please add at least one variable"
+        });
+        setActiveTab("variables");
+        return false;
+      }
+      
+      // Then check if categories exist
+      if (categories.length === 0) {
+        setValidationErrors({
+          categories: "Please add at least one category"
+        });
+        return false;
+      }
+      
+      // Check if categories have elements
+      const emptyCategoryIndex = categories.findIndex(c => !c.elements || c.elements.length === 0);
+      if (emptyCategoryIndex !== -1) {
+        setValidationErrors({
+          categories: `Category "${categories[emptyCategoryIndex].name || `#${emptyCategoryIndex + 1}`}" has no elements`
+        });
+        return false;
+      }
+      
+      // Check for empty category names
+      const emptyNameCategories = categories.some(c => !c.name.trim());
+      if (emptyNameCategories) {
+        setValidationErrors({
+          categories: "All categories must have names"
+        });
+        return false;
+      }
+      
+      // Check for empty element names
+      const emptyNameElements = categories.some(c => 
+        c.elements.some(e => !e.name.trim())
+      );
+      if (emptyNameElements) {
+        setValidationErrors({
+          categories: "All elements must have names"
+        });
+        return false;
+      }
+      
+      return true;
+    }
+    
+    return true;
+  };
 
   const goToNextTab = async () => {
     if (activeTab === "basic") {
@@ -250,16 +355,24 @@ export function CreateProposalDialog({
         "name",
         "global_markup_percentage",
       ]);
+      
       if (basicInfoValid) {
         if (creationType === "fromScratch") {
           setActiveTab("variables");
         } else {
-          // If from template, we're done with basic info
+          // If from template, validate template selection and create
+          if (!selectedTemplateId && templates.length > 0) {
+            toast.error("Please select a template");
+            return;
+          }
           onSubmit(form.getValues());
         }
       }
     } else if (activeTab === "variables") {
-      setActiveTab("categories");
+      // Validate variables before proceeding to categories
+      if (validateCurrentTab()) {
+        setActiveTab("categories");
+      }
     }
   };
 
@@ -278,6 +391,11 @@ export function CreateProposalDialog({
 
   // Create from template or scratch
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // For from scratch, validate all inputs first
+    if (values.creationType === "fromScratch" && !validateCurrentTab()) {
+      return; // Stop submission if validation fails
+    }
+  
     setIsCreating(true);
     setCreationProgress(10);
   
@@ -290,7 +408,7 @@ export function CreateProposalDialog({
         
         setCreationProgress(30);
         
-        // Create the proposal from the selected template - don't assign to unused variable
+        // Create the proposal from the selected template
         await proposalApi.createFromTemplate({
           name: values.name,
           template_id: values.templateId,
@@ -419,11 +537,7 @@ export function CreateProposalDialog({
       return templates.length > 0 && !selectedTemplateId;
     }
 
-    // For fromScratch, only disable on the last tab if validation fails
-    if (activeTab === "categories") {
-      return false; // We can still submit even without categories
-    }
-
+    // For fromScratch, if on the last tab we'll check in the validateCurrentTab function
     return false;
   };
 
@@ -804,6 +918,14 @@ export function CreateProposalDialog({
                         className="px-6 py-4"
                         style={{ height: "400px" }}
                       >
+                        {validationErrors.variables && (
+                          <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              {validationErrors.variables}
+                            </AlertDescription>
+                          </Alert>
+                        )}
                         <VariablesTab form={form} />
                       </ScrollArea>
                     </TabsContent>
@@ -814,6 +936,14 @@ export function CreateProposalDialog({
                         className="px-6 py-4"
                         style={{ height: "400px" }}
                       >
+                        {validationErrors.categories && (
+                          <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              {validationErrors.categories}
+                            </AlertDescription>
+                          </Alert>
+                        )}
                         <CategoriesTab form={form} />
                       </ScrollArea>
                     </TabsContent>
@@ -850,539 +980,564 @@ export function CreateProposalDialog({
                                 isSubmitButtonDisabled() && "opacity-50 cursor-not-allowed"
                               )}
                               disabled={isSubmitButtonDisabled()}
-                            >
-                              {isCreating ? (
-                                <>
-                                  <svg
-                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="4"
-                                    ></circle>
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    ></path>
-                                  </svg>
-                                  Creating...
-                                </>
-                              ) : (
-                                <>
-                                  <Check className="mr-2 h-4 w-4" />
-                                  Create Proposal
-                                </>
-                              )}
-                            </Button>
-                          ) : (
-                            <Button
-                              type="button"
-                              onClick={goToNextTab}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Next
-                            </Button>
-                          )}
-                        </div>
-                      </DialogFooter>
-                    </div>
-                  </form>
-                </Form>
-              </Tabs>
-            </motion.div>
-          </DialogContent>
-        )}
-      </AnimatePresence>
-    </Dialog>
-  );
-}
-
-// Variables Tab Component
-function VariablesTab({
-  form,
-}: {
-  form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>;
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Variables</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            const currentVariables = form.getValues("variables") || [];
-            form.setValue("variables", [
-              ...currentVariables,
-              { name: "", type: "SQUARE_FEET", default_value: 0 }, // Added default_value
-            ]);
-          }}
-          className="flex items-center gap-1"
-        >
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Add Variable
-        </Button>
-      </div>
-
-      <div className="space-y-4">
-        {!form.watch("variables") || form.watch("variables")?.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>
-              No variables added yet. Variables allow you to customize
-              calculations.
-            </p>
-          </div>
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {form.watch("variables")?.map((_, index: number) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0, transition: { duration: 0.2 } }}
-                exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
-                className="flex gap-4 items-start border p-4 rounded-md bg-card"
-              >
-                <FormField
-                  control={form.control}
-                  name={`variables.${index}.name`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Variable Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Room Size" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`variables.${index}.type`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Unit Type</FormLabel>
-                      <FormControl>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className="w-full justify-between"
-                            >
-                              {field.value === "SQUARE_FEET" && "Square Feet"}
-                              {field.value === "LINEAR_FEET" && "Linear Feet"}
-                              {field.value === "COUNT" && "Count"}
-                              {field.value === "CUBIC_FEET" && "Cubic Feet"}
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="24"
-                                height="24"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="ml-2 h-4 w-4 shrink-0 opacity-50"
                               >
-                                <path d="m6 9 6 6 6-6" />
-                              </svg>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-full p-0">
-                            <Command>
-                              <CommandList>
-                                <CommandGroup>
-                                  <CommandItem
-                                    onSelect={() => field.onChange("SQUARE_FEET")}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      field.value === "SQUARE_FEET" &&
-                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
-                                    )}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === "SQUARE_FEET"
-                                          ? "opacity-100 text-green-600"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    Square Feet
-                                  </CommandItem>
-                                  <CommandItem
-                                    onSelect={() => field.onChange("LINEAR_FEET")}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      field.value === "LINEAR_FEET" &&
-                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
-                                    )}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === "LINEAR_FEET"
-                                          ? "opacity-100 text-green-600"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    Linear Feet
-                                  </CommandItem>
-                                  <CommandItem
-                                    onSelect={() => field.onChange("CUBIC_FEET")}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      field.value === "CUBIC_FEET" &&
-                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
-                                    )}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === "CUBIC_FEET"
-                                          ? "opacity-100 text-green-600"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    Cubic Feet
-                                  </CommandItem>
-                                  <CommandItem
-                                    onSelect={() => field.onChange("COUNT")}
-                                    className={cn(
-                                      "cursor-pointer",
-                                      field.value === "COUNT" &&
-                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
-                                    )}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value === "COUNT"
-                                          ? "opacity-100 text-green-600"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    Count
-                                  </CommandItem>
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Default Value Field */}
-                <FormField
-                  control={form.control}
-                  name={`variables.${index}.default_value`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Default Value</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ""
-                                ? undefined
-                                : parseFloat(e.target.value)
-                            )
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="mt-5.5 hover:bg-red-50 hover:text-red-500"
-                  onClick={() => {
-                    const variables = form.getValues("variables") || [];
-                    form.setValue(
-                      "variables",
-                      variables.filter((_, i: number) => i !== index)
-                    );
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                                {isCreating ? (
+                                  <>
+                                    <svg
+                                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <circle
+                                        className="opacity-25"
+                                        cx="12"
+                                        cy="12"
+                                        r="10"
+                                        stroke="currentColor"
+                                        strokeWidth="4"
+                                      ></circle>
+                                      <path
+                                        className="opacity-75"
+                                        fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                      ></path>
+                                    </svg>
+                                    Creating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    Create Proposal
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                onClick={async () => {
+                                  // Validate current tab before proceeding
+                                  let isValid = false;
+                                  
+                                  if (activeTab === "basic") {
+                                    isValid = await form.trigger(["name", "global_markup_percentage"]);
+                                  } else if (activeTab === "variables") {
+                                    // Validate all variable fields if any exist
+                                    const variables = form.getValues("variables") || [];
+                                    if (variables.length > 0) {
+                                      isValid = await form.trigger("variables");
+                                    } else {
+                                      isValid = true; // No variables is valid at this point but will be checked later
+                                    }
+                                  }
+                                  
+                                  if (isValid) {
+                                    // Check for additional validation rules specific to our app
+                                    if (validateCurrentTab()) {
+                                      goToNextTab();
+                                    }
+                                  } else {
+                                    // Show toast to inform user about validation issues
+                                    toast.error("Please complete all required fields before proceeding");
+                                  }
+                                }}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                Next
+                              </Button>
+                            )}
+                          </div>
+                        </DialogFooter>
+                      </div>
+                    </form>
+                  </Form>
+                </Tabs>
               </motion.div>
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Categories Tab Component
-function CategoriesTab({
-  form,
-}: {
-  form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>;
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Categories & Elements</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            const currentCategories = form.getValues("categories") || [];
-            form.setValue("categories", [
-              ...currentCategories,
-              {
-                name: "",
-                position: currentCategories.length + 1,
-                elements: [],
-              },
-            ]);
-          }}
-          className="flex items-center gap-1"
-        >
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Add Category
-        </Button>
-      </div>
-
-      <div className="space-y-6">
-        {!form.watch("categories") || form.watch("categories")?.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>
-              No categories added yet. Categories organize related elements in
-              your proposal.
-            </p>
-          </div>
-        ) : (
-          <AnimatePresence mode="popLayout">
-            {form.watch("categories")?.map((_, categoryIndex: number) => (
-              <CategoryFormItem
-                key={categoryIndex}
-                form={form}
-                categoryIndex={categoryIndex}
-              />
-            ))}
-          </AnimatePresence>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Category Form Item Component
-function CategoryFormItem({
-  form,
-  categoryIndex,
-}: {
-  form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>;
-  categoryIndex: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.2 }}
-      className="border rounded-lg p-4 space-y-4 bg-card/50"
-    >
-      <div className="flex gap-4 items-start">
-        <FormField
-          control={form.control}
-          name={`categories.${categoryIndex}.name`}
-          render={({ field }) => (
-            <FormItem className="flex-1">
-              <FormLabel>Category Name</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g., Flooring" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+            </DialogContent>
           )}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="mt-5.5 hover:bg-red-50 hover:text-red-500"
-          onClick={() => {
-            const categories = form.getValues("categories") || [];
-            form.setValue(
-              "categories",
-              categories.filter((_, i: number) => i !== categoryIndex)
-            );
-          }}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Elements Section */}
-      <div className="pl-4 border-l-2 border-green-100 space-y-4">
+        </AnimatePresence>
+      </Dialog>
+    );
+  }
+  
+  // Variables Tab Component
+  function VariablesTab({
+    form,
+  }: {
+    form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>;
+  }) {
+    return (
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium">Elements</h4>
+          <h3 className="text-lg font-semibold">Variables</h3>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => {
-              const currentElements =
-                form.getValues(`categories.${categoryIndex}.elements`) || [];
-              form.setValue(`categories.${categoryIndex}.elements`, [
-                ...currentElements,
-                {
-                  name: "",
-                  material_cost: "",
-                  labor_cost: "",
-                  markup_percentage: form.getValues("global_markup_percentage"),
-                  position: currentElements.length + 1,
-                },
+              const currentVariables = form.getValues("variables") || [];
+              form.setValue("variables", [
+                ...currentVariables,
+                { name: "", type: "SQUARE_FEET", default_value: 0 },
               ]);
             }}
-            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+            className="flex items-center gap-1"
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
-            Add Element
+            Add Variable
           </Button>
         </div>
-
+  
         <div className="space-y-4">
-          {!form.watch(`categories.${categoryIndex}.elements`) ||
-          form.watch(`categories.${categoryIndex}.elements`).length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">
-              No elements added to this category yet.
-            </p>
+          {!form.watch("variables") || form.watch("variables")?.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>
+                No variables added yet. Variables allow you to customize
+                calculations.
+              </p>
+            </div>
           ) : (
             <AnimatePresence mode="popLayout">
-              {form
-                .watch(`categories.${categoryIndex}.elements`)
-                ?.map((_, elementIndex: number) => (
-                  <motion.div
-                    key={elementIndex}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="border bg-background rounded-md p-4 space-y-4"
+              {form.watch("variables")?.map((_, index: number) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.2 } }}
+                  exit={{ opacity: 0, height: 0, transition: { duration: 0.2 } }}
+                  className="flex gap-4 items-start border p-4 rounded-md bg-card"
+                >
+                  <FormField
+                    control={form.control}
+                    name={`variables.${index}.name`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>Variable Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Room Size" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`variables.${index}.type`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>Unit Type</FormLabel>
+                        <FormControl>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                className="w-full justify-between"
+                              >
+                                {field.value === "SQUARE_FEET" && "Square Feet"}
+                                {field.value === "LINEAR_FEET" && "Linear Feet"}
+                                {field.value === "COUNT" && "Count"}
+                                {field.value === "CUBIC_FEET" && "Cubic Feet"}
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="24"
+                                  height="24"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="ml-2 h-4 w-4 shrink-0 opacity-50"
+                                >
+                                  <path d="m6 9 6 6 6-6" />
+                                </svg>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0">
+                              <Command>
+                                <CommandList>
+                                  <CommandGroup>
+                                    <CommandItem
+                                      onSelect={() => field.onChange("SQUARE_FEET")}
+                                      className={cn(
+                                        "cursor-pointer",
+                                        field.value === "SQUARE_FEET" &&
+                                          "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                      )}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === "SQUARE_FEET"
+                                            ? "opacity-100 text-green-600"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      Square Feet
+                                    </CommandItem>
+                                    <CommandItem
+                                      onSelect={() => field.onChange("LINEAR_FEET")}
+                                      className={cn(
+                                        "cursor-pointer",
+                                        field.value === "LINEAR_FEET" &&
+                                          "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                      )}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === "LINEAR_FEET"
+                                            ? "opacity-100 text-green-600"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      Linear Feet
+                                    </CommandItem>
+                                    <CommandItem
+                                      onSelect={() => field.onChange("CUBIC_FEET")}
+                                      className={cn(
+                                        "cursor-pointer",
+                                        field.value === "CUBIC_FEET" &&
+                                          "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                      )}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === "CUBIC_FEET"
+                                            ? "opacity-100 text-green-600"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      Cubic Feet
+                                    </CommandItem>
+                                    <CommandItem
+                                      onSelect={() => field.onChange("COUNT")}
+                                      className={cn(
+                                        "cursor-pointer",
+                                        field.value === "COUNT" &&
+                                          "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                      )}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === "COUNT"
+                                            ? "opacity-100 text-green-600"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      Count
+                                    </CommandItem>
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+  
+                  {/* Default Value Field */}
+                  <FormField
+                    control={form.control}
+                    name={`variables.${index}.default_value`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>Default Value</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ""
+                                  ? 0
+                                  : parseFloat(e.target.value)
+                              )
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+  
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="mt-5.5 hover:bg-red-50 hover:text-red-500"
+                    onClick={() => {
+                      const variables = form.getValues("variables") || [];
+                      form.setValue(
+                        "variables",
+                        variables.filter((_, i: number) => i !== index)
+                      );
+                    }}
                   >
-                    <div className="flex justify-between items-center">
-                      <h5 className="text-sm font-medium">
-                        Element #{elementIndex + 1}
-                      </h5>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 hover:bg-red-50 hover:text-red-500"
-                        onClick={() => {
-                          const elements =
-                            form.getValues(
-                              `categories.${categoryIndex}.elements`
-                            ) || [];
-                          form.setValue(
-                            `categories.${categoryIndex}.elements`,
-                            elements.filter(
-                              (_, i: number) => i !== elementIndex
-                            )
-                          );
-                        }}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.name`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Element Name</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., Hardwood Floor"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.markup_percentage`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Markup %</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                {...field}
-                                onChange={(e) =>
-                                  field.onChange(parseInt(e.target.value))
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.material_cost`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Material Cost</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., 5.00" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.labor_cost`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Labor Cost</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., 2.00" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
+                    <X className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              ))}
             </AnimatePresence>
           )}
         </div>
       </div>
-    </motion.div>
-  );
-}
+    );
+  }
+
+  // Categories Tab Component
+  function CategoriesTab({
+    form,
+  }: {
+    form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>;
+  }) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Categories & Elements</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const currentCategories = form.getValues("categories") || [];
+              form.setValue("categories", [
+                ...currentCategories,
+                {
+                  name: "",
+                  position: currentCategories.length + 1,
+                  elements: [],
+                },
+              ]);
+            }}
+            className="flex items-center gap-1"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add Category
+          </Button>
+        </div>
+
+        <div className="space-y-6">
+          {!form.watch("categories") || form.watch("categories")?.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>
+                No categories added yet. Categories organize related elements in
+                your proposal.
+              </p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {form.watch("categories")?.map((_, categoryIndex: number) => (
+                <CategoryFormItem
+                  key={categoryIndex}
+                  form={form}
+                  categoryIndex={categoryIndex}
+                />
+              ))}
+            </AnimatePresence>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Category Form Item Component
+  function CategoryFormItem({
+    form,
+    categoryIndex,
+  }: {
+    form: ReturnType<typeof useForm<z.infer<typeof formSchema>>>;
+    categoryIndex: number;
+  }) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, height: 0 }}
+        transition={{ duration: 0.2 }}
+        className="border rounded-lg p-4 space-y-4 bg-card/50"
+      >
+        <div className="flex gap-4 items-start">
+          <FormField
+            control={form.control}
+            name={`categories.${categoryIndex}.name`}
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>Category Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., Flooring" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mt-5.5 hover:bg-red-50 hover:text-red-500"
+            onClick={() => {
+              const categories = form.getValues("categories") || [];
+              form.setValue(
+                "categories",
+                categories.filter((_, i: number) => i !== categoryIndex)
+              );
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Elements Section */}
+        <div className="pl-4 border-l-2 border-green-100 space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Elements</h4>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const currentElements =
+                  form.getValues(`categories.${categoryIndex}.elements`) || [];
+                form.setValue(`categories.${categoryIndex}.elements`, [
+                  ...currentElements,
+                  {
+                    name: "",
+                    material_cost: "",
+                    labor_cost: "",
+                    markup_percentage: form.getValues("global_markup_percentage"),
+                    position: currentElements.length + 1,
+                  },
+                ]);
+              }}
+              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add Element
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {!form.watch(`categories.${categoryIndex}.elements`) ||
+            form.watch(`categories.${categoryIndex}.elements`).length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">
+                No elements added to this category yet.
+              </p>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {form
+                  .watch(`categories.${categoryIndex}.elements`)
+                  ?.map((_, elementIndex: number) => (
+                    <motion.div
+                      key={elementIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="border bg-background rounded-md p-4 space-y-4"
+                    >
+                      <div className="flex justify-between items-center">
+                        <h5 className="text-sm font-medium">
+                          Element #{elementIndex + 1}
+                        </h5>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 hover:bg-red-50 hover:text-red-500"
+                          onClick={() => {
+                            const elements =
+                              form.getValues(
+                                `categories.${categoryIndex}.elements`
+                              ) || [];
+                            form.setValue(
+                              `categories.${categoryIndex}.elements`,
+                              elements.filter(
+                                (_, i: number) => i !== elementIndex
+                              )
+                            );
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name={`categories.${categoryIndex}.elements.${elementIndex}.name`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Element Name</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., Hardwood Floor"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`categories.${categoryIndex}.elements.${elementIndex}.markup_percentage`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Markup %</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  {...field}
+                                  onChange={(e) =>
+                                    field.onChange(parseInt(e.target.value))
+                                  }
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`categories.${categoryIndex}.elements.${elementIndex}.material_cost`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Material Cost</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., 5.00" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`categories.${categoryIndex}.elements.${elementIndex}.labor_cost`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Labor Cost</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., 2.00" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+              </AnimatePresence>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }

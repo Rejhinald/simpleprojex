@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -11,6 +11,7 @@ import {
   ListPlus,
   Check,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { templateApi, categoryApi } from "../../api/apiService";
 import { fadeIn, slideUp } from "../utils/template-utils";
 
@@ -64,6 +66,10 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
   const [activeTab, setActiveTab] = useState("basic");
   const [isCreating, setIsCreating] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
+  const [validationErrors, setValidationErrors] = useState<{
+    variables?: string;
+    categories?: string;
+  }>({});
   const TEMPLATE_REFRESH_KEY = "last_template_refresh";
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -75,6 +81,14 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
       variables: []
     },
   });
+  
+  const variables = form.watch("variables") || [];
+  const categories = form.watch("categories") || [];
+
+  // Clear validation errors when tab changes
+  useEffect(() => {
+    setValidationErrors({});
+  }, [activeTab]);
 
   const handleDialogOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -82,7 +96,90 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
       form.reset();
       setActiveTab("basic");
       setCreationProgress(0);
+      setValidationErrors({});
     }
+  };
+
+  // Validate form data based on current tab
+  const validateCurrentTab = (): boolean => {
+    // Reset errors
+    setValidationErrors({});
+    
+    if (activeTab === "basic") {
+      return true; // Basic tab validation is handled by form.trigger in goToNextTab
+    } 
+    else if (activeTab === "variables") {
+      if (variables.length === 0) {
+        setValidationErrors({
+          variables: "Please add at least one variable before proceeding"
+        });
+        return false;
+      }
+      
+      // Check if all variables have names
+      const emptyNameVariables = variables.some(v => !v.name.trim());
+      if (emptyNameVariables) {
+        setValidationErrors({
+          variables: "All variables must have names"
+        });
+        return false;
+      }
+      
+      return true;
+    } 
+    else if (activeTab === "categories") {
+      // For final submission, validate everything
+      
+      // First check if variables exist
+      if (variables.length === 0) {
+        setValidationErrors({
+          variables: "Please add at least one variable"
+        });
+        setActiveTab("variables");
+        return false;
+      }
+      
+      // Then check if categories exist
+      if (categories.length === 0) {
+        setValidationErrors({
+          categories: "Please add at least one category"
+        });
+        return false;
+      }
+      
+      // Check if categories have elements
+      const emptyCategoryIndex = categories.findIndex(c => !c.elements || c.elements.length === 0);
+      if (emptyCategoryIndex !== -1) {
+        setValidationErrors({
+          categories: `Category "${categories[emptyCategoryIndex].name || `#${emptyCategoryIndex + 1}`}" has no elements`
+        });
+        return false;
+      }
+      
+      // Check for empty category names
+      const emptyNameCategories = categories.some(c => !c.name.trim());
+      if (emptyNameCategories) {
+        setValidationErrors({
+          categories: "All categories must have names"
+        });
+        return false;
+      }
+      
+      // Check for empty element names
+      const emptyNameElements = categories.some(c => 
+        c.elements.some(e => !e.name.trim())
+      );
+      if (emptyNameElements) {
+        setValidationErrors({
+          categories: "All elements must have names"
+        });
+        return false;
+      }
+      
+      return true;
+    }
+    
+    return true;
   };
 
   const goToNextTab = async () => {
@@ -91,9 +188,16 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
       const basicInfoValid = await form.trigger(["name", "description"]);
       if (basicInfoValid) {
         setActiveTab("variables");
+      } else {
+        toast.error("Please fill in all required fields");
       }
     } else if (activeTab === "variables") {
-      setActiveTab("categories");
+      // Validate variables before proceeding to categories
+      if (validateCurrentTab()) {
+        setActiveTab("categories");
+      } else {
+        toast.error("Please address validation errors before proceeding");
+      }
     }
   };
 
@@ -107,7 +211,10 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
 
   const createBasicTemplate = async () => {
     const isValid = await form.trigger(["name", "description"]);
-    if (!isValid) return;
+    if (!isValid) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
     
     setIsCreating(true);
     setCreationProgress(20);
@@ -140,6 +247,12 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
   };
   
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    // Validate entire form before submission
+    if (!validateCurrentTab()) {
+      toast.error("Please address all validation errors before submitting");
+      return;
+    }
+    
     setIsCreating(true);
     setCreationProgress(10); // Start progress
     
@@ -157,22 +270,21 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
       setCreationProgress(40);
       
       // Create variables with default values
-// Create variables with default values
-if (values.variables?.length) {
-  setCreationProgress(60);
-  await Promise.all(
-    values.variables.map(async (variable) => {
-      // Create the variable with default value included
-      const createdVariable = await templateApi.createVariable(template.id, {
-        name: variable.name,
-        type: variable.type,
-        default_value: variable.default_value // Add this line
-      });
-      
-      return createdVariable;
-    })
-  );
-}
+      if (values.variables?.length) {
+        setCreationProgress(60);
+        await Promise.all(
+          values.variables.map(async (variable) => {
+            // Create the variable with default value included
+            const createdVariable = await templateApi.createVariable(template.id, {
+              name: variable.name,
+              type: variable.type,
+              default_value: variable.default_value // Add this line
+            });
+            
+            return createdVariable;
+          })
+        );
+      }
 
       // Create categories and their elements
       if (values.categories?.length) {
@@ -303,10 +415,26 @@ if (values.variables?.length) {
                   </TabsContent>
 
                   <TabsContent value="variables" className="space-y-6 mt-0">
+                    {validationErrors.variables && (
+                      <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          {validationErrors.variables}
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <TemplateVariablesTab form={form} />
                   </TabsContent>
 
                   <TabsContent value="categories" className="space-y-6 mt-0">
+                    {validationErrors.categories && (
+                      <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          {validationErrors.categories}
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <TemplateCategoriesTab form={form} />
                   </TabsContent>
                 </form>
@@ -474,7 +602,7 @@ function TemplateVariablesTab({ form }: { form: ReturnType<typeof useForm<z.infe
                   )}
                 />
                 
-                {/* New Default Value Field */}
+                {/* Default Value Field */}
                 <FormField
                   control={form.control}
                   name={`variables.${index}.default_value`}
@@ -486,7 +614,7 @@ function TemplateVariablesTab({ form }: { form: ReturnType<typeof useForm<z.infe
                           type="number" 
                           placeholder="0"
                           {...field}
-                          onChange={(e) => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                         />
                       </FormControl>
                       <FormMessage />
@@ -696,7 +824,7 @@ function CategoryFormItem({ form, categoryIndex }: { form: ReturnType<typeof use
                               min="0"
                               max="100"
                               {...field}
-                              onChange={e => field.onChange(parseInt(e.target.value))}
+                              onChange={e => field.onChange(parseInt(e.target.value) || 0)}
                             />
                           </FormControl>
                           <FormMessage />
