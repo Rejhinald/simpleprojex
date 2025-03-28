@@ -364,7 +364,7 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
               </TabsList>
             </div>
 
-            <div className="px-6 py-4 max-h-[60vh]">
+            <ScrollArea className="px-6 py-4 max-h-[60vh]">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                   <TabsContent value="basic" className="space-y-6 mt-0">
@@ -439,7 +439,7 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
                   </TabsContent>
                 </form>
               </Form>
-            </div>
+            </ScrollArea>
           </Tabs>
 
           <DialogFooter className="bg-muted/40 p-6 flex flex-row items-center justify-between sm:justify-between">
@@ -511,7 +511,7 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
   );
 }
 
-// Updated Variables Tab component with ScrollArea and default value input
+// Updated Variables Tab component with default value input
 function TemplateVariablesTab({ form }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>> }) {
   return (
     <motion.div 
@@ -545,102 +545,100 @@ function TemplateVariablesTab({ form }: { form: ReturnType<typeof useForm<z.infe
         </motion.div>
       </div>
       
-      <ScrollArea className="h-[400px]">
-        <div className="space-y-4 pr-4">
-          {form.watch("variables")?.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No variables added yet. Variables allow you to parametrize your template.</p>
-            </div>
-          ) : (
-            <AnimatePresence>
-              {form.watch("variables")?.map((_, index: number) => (
-                <motion.div 
-                  key={index}
-                  variants={slideUp}
-                  initial="hidden"
-                  animate="visible"
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex gap-4 items-start border p-4 rounded-md bg-card"
+      <div className="space-y-4">
+        {form.watch("variables")?.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No variables added yet. Variables allow you to parametrize your template.</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {form.watch("variables")?.map((_, index: number) => (
+              <motion.div 
+                key={index}
+                variants={slideUp}
+                initial="hidden"
+                animate="visible"
+                exit={{ opacity: 0, height: 0 }}
+                className="flex gap-4 items-start border p-4 rounded-md bg-card"
+              >
+                <FormField
+                  control={form.control}
+                  name={`variables.${index}.name`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Variable Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Room Size" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`variables.${index}.type`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Unit Type</FormLabel>
+                      <FormControl>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select unit type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SQUARE_FEET">Square Feet</SelectItem>
+                            <SelectItem value="LINEAR_FEET">Linear Feet</SelectItem>
+                            <SelectItem value="COUNT">Count</SelectItem>
+                            <SelectItem value="CUBIC_FEET">Cubic Feet</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {/* Default Value Field */}
+                <FormField
+                  control={form.control}
+                  name={`variables.${index}.default_value`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Default Value</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="0"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="mt-5 hover:bg-red-50 hover:text-red-500"
+                  onClick={() => {
+                    const variables = form.getValues("variables");
+                    form.setValue("variables", variables.filter((_, i: number) => i !== index));
+                  }}
                 >
-                  <FormField
-                    control={form.control}
-                    name={`variables.${index}.name`}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Variable Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Room Size" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`variables.${index}.type`}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Unit Type</FormLabel>
-                        <FormControl>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                            value={field.value}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select unit type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="SQUARE_FEET">Square Feet</SelectItem>
-                              <SelectItem value="LINEAR_FEET">Linear Feet</SelectItem>
-                              <SelectItem value="COUNT">Count</SelectItem>
-                              <SelectItem value="CUBIC_FEET">Cubic Feet</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  {/* Default Value Field */}
-                  <FormField
-                    control={form.control}
-                    name={`variables.${index}.default_value`}
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormLabel>Default Value</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="0"
-                            {...field}
-                            onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="mt-5 hover:bg-red-50 hover:text-red-500"
-                    onClick={() => {
-                      const variables = form.getValues("variables");
-                      form.setValue("variables", variables.filter((_, i: number) => i !== index));
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
-      </ScrollArea>
+                  <X className="h-4 w-4" />
+                </Button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -678,25 +676,23 @@ function TemplateCategoriesTab({ form }: { form: ReturnType<typeof useForm<z.inf
         </motion.div>
       </div>
       
-      <ScrollArea className="h-[400px]">
-        <div className="space-y-6 pr-4">
-          {form.watch("categories")?.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No categories added yet. Categories organize related elements in your template.</p>
-            </div>
-          ) : (
-            <AnimatePresence>
-              {form.watch("categories")?.map((category: z.infer<typeof formSchema>["categories"][number], categoryIndex: number) => (
-                <CategoryFormItem 
-                  key={categoryIndex}
-                  form={form}
-                  categoryIndex={categoryIndex}
-                />
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
-      </ScrollArea>
+      <div className="space-y-6">
+        {form.watch("categories")?.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No categories added yet. Categories organize related elements in your template.</p>
+          </div>
+        ) : (
+          <AnimatePresence>
+            {form.watch("categories")?.map((category: z.infer<typeof formSchema>["categories"][number], categoryIndex: number) => (
+              <CategoryFormItem 
+                key={categoryIndex}
+                form={form}
+                categoryIndex={categoryIndex}
+              />
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
     </motion.div>
   );
 }
@@ -769,106 +765,105 @@ function CategoryFormItem({ form, categoryIndex }: { form: ReturnType<typeof use
           </Button>
         </div>
         
-        <ScrollArea className="max-h-[200px]">
-          <div className="space-y-4 pr-4">
-            {form.watch(`categories.${categoryIndex}.elements`)?.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic">No elements added to this category yet.</p>
-            ) : (
-              <AnimatePresence>
-                {form.watch(`categories.${categoryIndex}.elements`)?.map((_, elementIndex: number) => (
-                  <motion.div 
-                    key={elementIndex}
-                    variants={slideUp}
-                    initial="hidden"
-                    animate="visible"
-                    exit={{ opacity: 0, height: 0 }}
-                    className="border bg-background rounded-md p-4 space-y-4"
-                  >
-                    <div className="flex justify-between items-center">
-                      <h5 className="text-sm font-medium">Element #{elementIndex + 1}</h5>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 hover:bg-red-50 hover:text-red-500"
-                        onClick={() => {
-                          const elements = form.getValues(`categories.${categoryIndex}.elements`);
-                          form.setValue(
-                            `categories.${categoryIndex}.elements`,
-                            elements.filter((_: z.infer<typeof formSchema>["categories"][number]["elements"][number], i: number) => i !== elementIndex)
-                          );
-                        }}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.name`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Element Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., Hardwood Floor" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.markup_percentage`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Markup %</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                {...field}
-                                onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.material_cost`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Material Cost Formula</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., $5 * square_feet" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`categories.${categoryIndex}.elements.${elementIndex}.labor_cost`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Labor Cost Formula</FormLabel>
-                            <FormControl>
-                              <Input placeholder="e.g., $2 * square_feet" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            )}
-          </div>
-        </ScrollArea>
+        {/* Elements list */}
+        <div className="space-y-4">
+          {form.watch(`categories.${categoryIndex}.elements`)?.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">No elements added to this category yet.</p>
+          ) : (
+            <AnimatePresence>
+              {form.watch(`categories.${categoryIndex}.elements`)?.map((_, elementIndex: number) => (
+                <motion.div 
+                  key={elementIndex}
+                  variants={slideUp}
+                  initial="hidden"
+                  animate="visible"
+                  exit={{ opacity: 0, height: 0 }}
+                  className="border bg-background rounded-md p-4 space-y-4"
+                >
+                  <div className="flex justify-between items-center">
+                    <h5 className="text-sm font-medium">Element #{elementIndex + 1}</h5>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 hover:bg-red-50 hover:text-red-500"
+                      onClick={() => {
+                        const elements = form.getValues(`categories.${categoryIndex}.elements`);
+                        form.setValue(
+                          `categories.${categoryIndex}.elements`,
+                          elements.filter((_: z.infer<typeof formSchema>["categories"][number]["elements"][number], i: number) => i !== elementIndex)
+                        );
+                      }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`categories.${categoryIndex}.elements.${elementIndex}.name`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Element Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Hardwood Floor" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`categories.${categoryIndex}.elements.${elementIndex}.markup_percentage`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Markup %</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              {...field}
+                              onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`categories.${categoryIndex}.elements.${elementIndex}.material_cost`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Material Cost Formula</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., $5 * square_feet" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`categories.${categoryIndex}.elements.${elementIndex}.labor_cost`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Labor Cost Formula</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., $2 * square_feet" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </div>
       </div>
     </motion.div>
   );
