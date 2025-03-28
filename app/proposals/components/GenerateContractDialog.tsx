@@ -77,7 +77,9 @@ function GenerateContractDialogComponent({
     month: '2-digit',
     day: '2-digit'
   });
-    
+  
+  const userLogin = "Admin"; // This would normally come from auth context
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
