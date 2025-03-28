@@ -229,7 +229,7 @@ export function getSignatureImageUrl(signaturePath: string | null): string {
   const cleanPath = signaturePath.replace(/^media\//, '');
   
   // Add the media prefix only once
-  return `http://rejhinald.pythonanywhere.com/${cleanPath}`;
+  return `https://rejhinald.pythonanywhere.com/${cleanPath}`;
 }
 
 
