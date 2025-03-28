@@ -38,34 +38,46 @@ import { useSidebarContext } from "@/app/contexts/sidebar-context";
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const [currentDate, setCurrentDate] = useState("2025-03-26 12:28:11");
-  const username = "Rejhinald";
+  const [currentDate, setCurrentDate] = useState("2025-03-26 19:01:55");
+  const username = "Admin";
   const { open, setOpen } = useSidebar();
   const [isMounted, setIsMounted] = useState(false);
   const [isThemeToggleOpen, setIsThemeToggleOpen] = useState(false);
   const { setIsExpanded } = useSidebarContext();
 
+  // Keep the two contexts in sync
+  useEffect(() => {
+    if (isMounted) {
+      setIsExpanded(open);
+    }
+  }, [open, setIsExpanded, isMounted]);
+
   useEffect(() => {
     setIsMounted(true);
+    // Set initial date
+    const now = new Date();
+    const formattedDate = now.toISOString().slice(0, 19).replace("T", " ");
+    setCurrentDate(formattedDate);
   }, []);
 
   const handleMouseEnter = () => {
     if (isMounted && !open && !isThemeToggleOpen) {
       setOpen(true);
-      setIsExpanded(true);  // Add this line
+      setIsExpanded(true);
     }
   };
 
   const handleMouseLeave = () => {
     if (isMounted && open && !isThemeToggleOpen) {
       setOpen(false);
-      setIsExpanded(false);  // Add this line
+      setIsExpanded(false);
     }
   };
   
   const handleThemeToggleClick = () => {
     setIsThemeToggleOpen(true);
     setOpen(true);
+    setIsExpanded(true);
   };
 
   const handleThemeSelection = () => {
@@ -73,6 +85,7 @@ export function SidebarNav() {
       setIsThemeToggleOpen(false);
       if (!document.querySelector(".sidebar-container")?.matches(":hover")) {
         setOpen(false);
+        setIsExpanded(false);
       }
     }, 300);
   };
@@ -114,16 +127,25 @@ export function SidebarNav() {
     },
   };
 
+  // Return a simple placeholder during server-side rendering to prevent hydration errors
+  if (!isMounted) {
+    return (
+      <div className="h-screen" style={{ width: 64 }}>
+        {/* Minimal content for SSR */}
+      </div>
+    );
+  }
+
   return (
     <motion.div
-      className="relative h-screen border-r bg-background z-30"
+      className="h-screen z-[50]" 
       initial={false}
       animate={open ? "expanded" : "collapsed"}
       variants={sidebarVariants}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className="sidebar-container h-full">
+      <div className="sidebar-container h-full w-full">
         <Sidebar collapsible="icon" className="h-full border-none">
           <SidebarHeader className="pb-0">
             <motion.div className="flex items-center gap-2 px-2 py-3" layout>
@@ -175,7 +197,9 @@ export function SidebarNav() {
             </motion.div>
           </SidebarHeader>
 
+          {/* SidebarContent section remains the same */}
           <SidebarContent className="px-2">
+            {/* Content remains unchanged */}
             <SidebarGroup>
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
@@ -334,12 +358,12 @@ export function SidebarNav() {
           </SidebarContent>
 
           <SidebarFooter className="mt-auto">
-            <div className="border-t pt-2 pb-2 px-3">
+            <div className="border-t pt-2 pb-2 px-2"> {/* Changed px-3 to px-2 to match header */}
               {open ? (
                 <motion.div
                   className="flex items-center gap-3 py-2 px-1.5 rounded-md hover:bg-muted/50 transition-colors"
                   layout
-                  initial={{ opacity: 1 }} // Make sure this is visible initially
+                  initial={{ opacity: 1 }}
                 >
                   <motion.div
                     className="relative"
@@ -349,7 +373,8 @@ export function SidebarNav() {
                     whileHover={{ scale: 1.05 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <Avatar className="h-9 w-9 ring-2 ring-blue-200/50 ring-offset-2 ring-offset-background transition-all duration-300">
+                    <Avatar className="h-8 w-8 ring-2 ring-blue-200/50 ring-offset-2 ring-offset-background transition-all duration-300">
+                      {/* Changed h-9 w-9 to h-8 w-8 to match header avatar */}
                       <AvatarImage
                         src="/avatar-placeholder.png"
                         alt={username}
@@ -372,7 +397,6 @@ export function SidebarNav() {
                     </Avatar>
                   </motion.div>
 
-                  {/* This is where the issue is - fix animation states */}
                   <motion.div
                     className="flex flex-col min-w-0 flex-1"
                     variants={contentVariants}
@@ -393,7 +417,6 @@ export function SidebarNav() {
                     </motion.span>
                   </motion.div>
 
-                  {/* Also fix animation states for buttons */}
                   <motion.div
                     className="flex items-center gap-0.5 ml-auto"
                     variants={contentVariants}
@@ -419,7 +442,7 @@ export function SidebarNav() {
                   </motion.div>
                 </motion.div>
               ) : (
-                <div className="flex justify-center pl-3">
+                <div className="flex justify-center px-2"> {/* Removed pl-3 and added px-2 to match header */}
                   <motion.div
                     className="relative"
                     layout
@@ -428,7 +451,8 @@ export function SidebarNav() {
                     whileHover={{ scale: 1.05 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <Avatar className="h-9 w-9 ring-2 ring-blue-200/50 ring-offset-2 ring-offset-background transition-all duration-300">
+                    <Avatar className="h-8 w-8 ring-2 ring-blue-200/50 ring-offset-2 ring-offset-background transition-all duration-300">
+                      {/* Changed h-9 w-9 to h-8 w-8 to match header avatar */}
                       <AvatarImage
                         src="/avatar-placeholder.png"
                         alt={username}

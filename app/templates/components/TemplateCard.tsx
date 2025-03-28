@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { 
   Card, 
   CardContent, 
@@ -23,11 +23,15 @@ import {
   Trash2,
   LayoutGrid,
   Variable as VariableIcon,
-  List
+  List,
+  Loader2
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { categoryApi, Element } from "../../api/apiService";
+import { categoryApi, Element, templateApi, Variable } from "../../api/apiService";
 import { useTemplateContext } from '../contexts/TemplateContext';
+
+// Key used for refreshing templates
+const TEMPLATE_REFRESH_KEY = "last_template_refresh";
 
 interface TemplateCardProps {
     template: TemplateWithDetails;
@@ -37,55 +41,110 @@ interface TemplateCardProps {
     onToggleExpand: (id: number, e: React.MouseEvent) => void;
     categoryElements: Record<number, Element[]>;
     setCategoryElements: React.Dispatch<React.SetStateAction<Record<number, Element[]>>>;
-  }
+    forceRefreshAll: () => void;
+}
+
+export function TemplateCard({ 
+  template, 
+  isLoading, 
+  onDelete,
+  categoryElements,
+  setCategoryElements,
+  forceRefreshAll
+}: TemplateCardProps) {
+  const { expandedId, setExpandedId } = useTemplateContext();
+  const isExpanded = expandedId === template.id;
+  const [currentVariables, setCurrentVariables] = useState<Variable[]>([]);
+  const [loadingVariables, setLoadingVariables] = useState(false);
+  const [loadingElements, setLoadingElements] = useState<Record<number, boolean>>({});
   
+  const [localStats, setLocalStats] = useState({
+    variableCount: 0,
+    categoryCount: 0,
+    elementCount: 0
+  });
 
-  export function TemplateCard({ 
-    template, 
-    isLoading, 
-    onDelete,
-    categoryElements,
-    setCategoryElements 
-  }: TemplateCardProps) {
-    const { expandedId, setExpandedId } = useTemplateContext();
-    const isExpanded = expandedId === template.id;
-    const [loadingElements, setLoadingElements] = useState<Record<number, boolean>>({});
-
-  // Calculate stats with actual elements
-  const getStats = () => {
-    const variableCount = template.variables?.length || 0;
+  // Load variables directly for this template
+  useEffect(() => {
+    const loadVariables = async () => {
+      if (template.id) {
+        setLoadingVariables(true);
+        try {
+          const variables = await templateApi.listVariables(template.id);
+          setCurrentVariables(variables || []);
+        } catch (error) {
+          console.error(`Failed to load variables for template ${template.id}:`, error);
+          setCurrentVariables([]);
+        } finally {
+          setLoadingVariables(false);
+        }
+      }
+    };
+    
+    loadVariables();
+  }, [template.id]);
+  
+  // Function to load category elements
+  const loadElements = async (categoryId: number) => {
+    // Skip if already loading
+    if (loadingElements[categoryId]) return;
+    
+    // Skip if we already have elements
+    if (categoryElements[categoryId]?.length > 0) return;
+    
+    // Set loading state
+    setLoadingElements(prev => ({ ...prev, [categoryId]: true }));
+    
+    try {
+      const elements = await categoryApi.listElements(categoryId);
+      setCategoryElements(prev => ({
+        ...prev,
+        [categoryId]: elements || []
+      }));
+    } catch (error) {
+      console.error(`Failed to load elements for category ${categoryId}:`, error);
+    } finally {
+      setLoadingElements(prev => ({ ...prev, [categoryId]: false }));
+    }
+  };
+  
+  // Load elements for all categories
+  useEffect(() => {
+    const loadAllElements = async () => {
+      if (template.categories?.length) {
+        for (const category of template.categories) {
+          await loadElements(category.id);
+        }
+      }
+    };
+    
+    loadAllElements();
+  }, [template.categories]);
+  
+  // Calculate stats based on current data
+  useEffect(() => {
+    const variableCount = currentVariables.length || 0;
     const categoryCount = template.categories?.length || 0;
     const elementCount = template.categories?.reduce((total, category) => {
       return total + (categoryElements[category.id]?.length || 0);
     }, 0) || 0;
 
-    return { variableCount, categoryCount, elementCount };
-  };
+    setLocalStats({ variableCount, categoryCount, elementCount });
+  }, [currentVariables, template.categories, categoryElements]);
 
-  const { variableCount, categoryCount, elementCount } = getStats();
-
-  // Load elements immediately when component mounts
+  // Listen for localStorage changes
   useEffect(() => {
-    const loadCategoryElements = async () => {
-      if (template.categories && template.categories.length > 0) {
-        for (const category of template.categories) {
-          if (!categoryElements[category.id] && !loadingElements[category.id]) {
-            setLoadingElements(prev => ({ ...prev, [category.id]: true }));
-            try {
-              const elements = await categoryApi.listElements(category.id);
-              setCategoryElements(prev => ({ ...prev, [category.id]: elements }));
-            } catch (error) {
-              console.error(`Failed to load elements for category ${category.id}:`, error);
-            } finally {
-              setLoadingElements(prev => ({ ...prev, [category.id]: false }));
-            }
-          }
-        }
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === TEMPLATE_REFRESH_KEY) {
+        forceRefreshAll();
       }
     };
-
-    loadCategoryElements();
-  }, [template.categories, categoryElements, loadingElements]);
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [forceRefreshAll]);
 
   const handleToggleExpand = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -94,6 +153,7 @@ interface TemplateCardProps {
   };
 
   const anyElementsLoading = template.categories?.some(category => loadingElements[category.id]) || false;
+  const isDataLoading = isLoading || loadingVariables || anyElementsLoading;
 
   return (
     <motion.div
@@ -133,15 +193,21 @@ interface TemplateCardProps {
               <div className="grid grid-cols-3 gap-2 text-sm text-center">
                 <div className="flex flex-col items-center border p-2 rounded-md">
                   <span className="font-medium">Variables</span>
-                  <span className="text-xl">{variableCount}</span>
+                  <span className="text-xl">{isDataLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin inline" />
+                  ) : localStats.variableCount}</span>
                 </div>
                 <div className="flex flex-col items-center border p-2 rounded-md">
                   <span className="font-medium">Categories</span>
-                  <span className="text-xl">{categoryCount}</span>
+                  <span className="text-xl">{isDataLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin inline" />
+                  ) : localStats.categoryCount}</span>
                 </div>
                 <div className="flex flex-col items-center border p-2 rounded-md">
                   <span className="font-medium">Elements</span>
-                  <span className="text-xl">{elementCount}</span>
+                  <span className="text-xl">{isDataLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin inline" />
+                  ) : localStats.elementCount}</span>
                 </div>
               </div>
               
@@ -157,85 +223,71 @@ interface TemplateCardProps {
                 }}
                 className="mt-4 space-y-3"
               >
-                <AnimatePresence>
-                  {isLoading || anyElementsLoading ? (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="flex justify-center py-4"
-                    >
-                      <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    </motion.div>
-                  ) : (
-                    <>
-                      {variableCount > 0 && template.variables && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <h4 className="font-medium text-sm mb-1 flex items-center">
-                            <VariableIcon className="h-3.5 w-3.5 mr-1 text-blue-500" />
-                            Variables
-                          </h4>
-                          <div className="flex flex-wrap gap-1 pl-5">
-                            {template.variables.map(variable => (
-                              <Badge key={variable.id} variant="outline" className="text-xs">
-                                {variable.name} ({variable.type.replace('_', ' ').toLowerCase()})
-                              </Badge>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                      
-                      {categoryCount > 0 && template.categories && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          transition={{ duration: 0.2, delay: 0.1 }}
-                          className="space-y-3"
-                        >
-                          <h4 className="font-medium text-sm mb-1 flex items-center">
-                            <LayoutGrid className="h-3.5 w-3.5 mr-1 text-blue-500" />
-                            Categories & Elements
-                          </h4>
-                          <div className="pl-2 space-y-2">
-                            {template.categories.map(category => (
-                              <div key={category.id} className="border-l-2 border-blue-100 pl-3 py-1">
-                                <h5 className="text-sm font-medium">{category.name}</h5>
-                                {categoryElements[category.id]?.length > 0 ? (
-                                  <div className="mt-1 pl-2">
-                                    <p className="text-xs text-muted-foreground flex items-center">
-                                      <List className="h-3 w-3 mr-1" />
-                                      Elements:
-                                    </p>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {categoryElements[category.id].map(element => (
-                                        <Badge key={element.id} variant="outline" className="text-xs">
-                                          {element.name}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground mt-1 pl-2">
-                                    No elements
+                {isDataLoading ? (
+                  <div className="flex justify-center py-4">
+                    <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                ) : (
+                  <>
+                    {currentVariables.length > 0 && (
+                      <div className="transition-all duration-300">
+                        <h4 className="font-medium text-sm mb-1 flex items-center">
+                          <VariableIcon className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                          Variables
+                        </h4>
+                        <div className="flex flex-wrap gap-1 pl-5">
+                          {currentVariables.map(variable => (
+                            <Badge key={variable.id} variant="outline" className="text-xs">
+                              {variable.name} ({variable.type.replace('_', ' ').toLowerCase()})
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {(template.categories || []).length > 0 && (
+                      <div className="transition-all duration-300">
+                        <h4 className="font-medium text-sm mb-1 flex items-center">
+                          <LayoutGrid className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                          Categories & Elements
+                        </h4>
+                        <div className="pl-2 space-y-2">
+                          {(template.categories || []).map(category => (
+                            <div key={category.id} className="border-l-2 border-blue-100 pl-3 py-1">
+                              <h5 className="text-sm font-medium">{category.name}</h5>
+                              {loadingElements[category.id] ? (
+                                <div className="flex justify-center py-2">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                </div>
+                              ) : categoryElements[category.id]?.length > 0 ? (
+                                <div className="mt-1 pl-2">
+                                  <p className="text-xs text-muted-foreground flex items-center">
+                                    <List className="h-3 w-3 mr-1" />
+                                    Elements:
                                   </p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </>
-                  )}
-                </AnimatePresence>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {categoryElements[category.id].map(element => (
+                                      <Badge key={element.id} variant="outline" className="text-xs">
+                                        {element.name}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-1 pl-2">
+                                  No elements
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </motion.div>
             </motion.div>
           </div>

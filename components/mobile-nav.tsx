@@ -78,7 +78,7 @@ export function MobileNav() {
                 {new Date().toISOString().split('T')[0]}
               </span>
               <span className="text-sm font-medium">
-                Rejhinald
+                Admin
               </span>
             </div>
           </div>

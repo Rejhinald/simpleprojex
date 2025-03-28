@@ -50,7 +50,8 @@ const formSchema = z.object({
   })),
   variables: z.array(z.object({
     name: z.string().min(2, { message: "Variable name must be at least 2 characters." }),
-    type: z.enum(["LINEAR_FEET", "SQUARE_FEET", "CUBIC_FEET", "COUNT"])
+    type: z.enum(["LINEAR_FEET", "SQUARE_FEET", "CUBIC_FEET", "COUNT"]),
+    default_value: z.number().optional() // Add default_value field
   }))
 });
 
@@ -63,7 +64,8 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
   const [activeTab, setActiveTab] = useState("basic");
   const [isCreating, setIsCreating] = useState(false);
   const [creationProgress, setCreationProgress] = useState(0);
-  
+  const TEMPLATE_REFRESH_KEY = "last_template_refresh";
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -117,6 +119,9 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
         description: values.description || "",
       });
       
+      // Add this line to trigger refresh in TemplateCard
+      localStorage.setItem(TEMPLATE_REFRESH_KEY, Date.now().toString());
+      
       setCreationProgress(100);
       onTemplateCreated();
       toast.success("Basic template created successfully");
@@ -133,7 +138,7 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
       setIsCreating(false);
     }
   };
-
+  
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsCreating(true);
     setCreationProgress(10); // Start progress
@@ -146,20 +151,28 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
         description: values.description || "",
       });
       
+      // Add this line to trigger refresh in TemplateCard
+      localStorage.setItem(TEMPLATE_REFRESH_KEY, Date.now().toString());
+      
       setCreationProgress(40);
       
-      // Create variables
-      if (values.variables?.length) {
-        setCreationProgress(60);
-        await Promise.all(
-          values.variables.map(variable =>
-            templateApi.createVariable(template.id, {
-              name: variable.name,
-              type: variable.type
-            })
-          )
-        );
-      }
+      // Create variables with default values
+// Create variables with default values
+if (values.variables?.length) {
+  setCreationProgress(60);
+  await Promise.all(
+    values.variables.map(async (variable) => {
+      // Create the variable with default value included
+      const createdVariable = await templateApi.createVariable(template.id, {
+        name: variable.name,
+        type: variable.type,
+        default_value: variable.default_value // Add this line
+      });
+      
+      return createdVariable;
+    })
+  );
+}
 
       // Create categories and their elements
       if (values.categories?.length) {
@@ -370,7 +383,7 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
   );
 }
 
-// Extracted Tab Components
+// Updated Variables Tab component with default value input
 function TemplateVariablesTab({ form }: { form: ReturnType<typeof useForm<z.infer<typeof formSchema>>> }) {
   return (
     <motion.div 
@@ -393,7 +406,7 @@ function TemplateVariablesTab({ form }: { form: ReturnType<typeof useForm<z.infe
               const currentVariables = form.getValues("variables") || [];
               form.setValue("variables", [
                 ...currentVariables,
-                { name: "", type: "SQUARE_FEET" }
+                { name: "", type: "SQUARE_FEET", default_value: 0 }
               ]);
             }}
             className="flex items-center gap-1"
@@ -460,11 +473,32 @@ function TemplateVariablesTab({ form }: { form: ReturnType<typeof useForm<z.infe
                     </FormItem>
                   )}
                 />
+                
+                {/* New Default Value Field */}
+                <FormField
+                  control={form.control}
+                  name={`variables.${index}.default_value`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>Default Value</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="0"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="mt-8 hover:bg-red-50 hover:text-red-500"
+                  className="mt-5 hover:bg-red-50 hover:text-red-500"
                   onClick={() => {
                     const variables = form.getValues("variables");
                     form.setValue("variables", variables.filter((_, i: number) => i !== index));
