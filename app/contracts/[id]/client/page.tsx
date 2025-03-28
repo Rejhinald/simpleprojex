@@ -8,8 +8,9 @@ import {
   proposalApi, 
   Contract, 
   Proposal, 
-  ElementValue 
-} from "../../../api/apiService";
+  ElementValue,
+  getSignatureImageUrl 
+} from "@/app/api/apiService";
 import { Button } from "@/components/ui/button";
 import { ContractTerms } from "../components/ContractTerms";
 import { ContractCostTable } from "../components/ContractCostTable";
@@ -17,6 +18,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ClientSignatureDialog } from "./components/ClientSignatureDialog";
 import { toast } from "sonner";
 import { PenLine, FileCheck, Printer } from "lucide-react";
+
+function formatUTCDateTime(date: Date | string): string {
+  return new Date(date).toISOString().slice(0, 19).replace('T', ' ');
+}
 
 export default function ClientContractViewPage() {
   const params = useParams();
@@ -71,9 +76,9 @@ export default function ClientContractViewPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <div className="animate-pulse flex flex-col items-center">
-          <div className="h-12 w-12 rounded-full bg-blue-200 mb-4"></div>
-          <div className="h-4 w-32 bg-blue-200 mb-2"></div>
-          <div className="h-4 w-24 bg-blue-200"></div>
+          <div className="h-12 w-12 rounded-full bg-primary/20 mb-4"></div>
+          <div className="h-4 w-32 bg-primary/20 mb-2"></div>
+          <div className="h-4 w-24 bg-primary/20"></div>
         </div>
       </div>
     );
@@ -82,9 +87,9 @@ export default function ClientContractViewPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-red-50 p-6 rounded-lg max-w-md text-center">
-          <h2 className="text-xl font-semibold text-red-600 mb-2">Error Loading Contract</h2>
-          <p className="text-gray-700 mb-4">{error}</p>
+        <div className="bg-destructive/10 dark:bg-destructive/20 p-6 rounded-lg max-w-md text-center">
+          <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Contract</h2>
+          <p className="text-foreground mb-4">{error}</p>
         </div>
       </div>
     );
@@ -93,14 +98,21 @@ export default function ClientContractViewPage() {
   if (!contract) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <div className="bg-amber-50 p-6 rounded-lg max-w-md text-center">
-          <h2 className="text-xl font-semibold text-amber-600 mb-2">Contract Not Found</h2>
-          <p className="text-gray-700 mb-4">The requested contract could not be found.</p>
+        <div className="bg-amber-50 dark:bg-amber-950/50 p-6 rounded-lg max-w-md text-center">
+          <h2 className="text-xl font-semibold text-amber-600 dark:text-amber-400 mb-2">Contract Not Found</h2>
+          <p className="text-foreground mb-4">The requested contract could not be found.</p>
         </div>
       </div>
     );
   }
   
+  const calculateTotalAmount = () => {
+    return elementValues.reduce((total, element) => {
+      const markup = 1 + (parseFloat(element.markup_percentage) / 100);
+      return total + ((parseFloat(element.calculated_material_cost) + parseFloat(element.calculated_labor_cost)) * markup);
+    }, 0);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -125,41 +137,41 @@ export default function ClientContractViewPage() {
       </div>
       
       {contract.client_signed_at ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center justify-center text-green-700">
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6 flex items-center justify-center text-green-700 dark:text-green-400">
           <FileCheck className="h-5 w-5 mr-2" />
           <p>
-            This contract has been signed on {new Date(contract.client_signed_at).toLocaleString()}
+            This contract has been signed on {formatUTCDateTime(contract.client_signed_at)}
           </p>
         </div>
       ) : null}
       
-      <div className="bg-white p-6 rounded-lg shadow-md print:shadow-none">
+      <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md print:shadow-none border border-border">
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold uppercase">CONSTRUCTION CONTRACT</h2>
           <p className="text-lg">{proposal?.name || 'Contract'}</p>
           {contract.version > 1 && (
-            <p className="text-sm text-amber-600 mt-1">Revision {contract.version}</p>
+            <p className="text-sm text-amber-600 dark:text-amber-500 mt-1">Revision {contract.version}</p>
           )}
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div>
-            <h3 className="font-semibold text-lg border-b pb-1 mb-2">Client Information</h3>
+            <h3 className="font-semibold text-lg border-b border-border pb-1 mb-2">Client Information</h3>
             <p><strong>Name:</strong> {contract.client_name}</p>
             {contract.client_signed_at && (
               <p>
-                <strong>Signed:</strong> {new Date(contract.client_signed_at).toLocaleString()}
+                <strong>Signed:</strong> {formatUTCDateTime(contract.client_signed_at)}
                 <span className="ml-2">({contract.client_initials})</span>
               </p>
             )}
           </div>
           
           <div>
-            <h3 className="font-semibold text-lg border-b pb-1 mb-2">Contractor Information</h3>
+            <h3 className="font-semibold text-lg border-b border-border pb-1 mb-2">Contractor Information</h3>
             <p><strong>Name:</strong> {contract.contractor_name}</p>
             {contract.contractor_signed_at && (
               <p>
-                <strong>Signed:</strong> {new Date(contract.contractor_signed_at).toLocaleString()}
+                <strong>Signed:</strong> {formatUTCDateTime(contract.contractor_signed_at)}
                 <span className="ml-2">({contract.contractor_initials})</span>
               </p>
             )}
@@ -169,6 +181,11 @@ export default function ClientContractViewPage() {
         {elementValues.length > 0 && (
           <div className="mb-8">
             <ContractCostTable elementValues={elementValues} />
+            <div className="mt-4 text-right">
+              <p className="font-semibold">
+                Total Contract Amount: ${calculateTotalAmount().toFixed(2)}
+              </p>
+            </div>
           </div>
         )}
         
@@ -177,16 +194,16 @@ export default function ClientContractViewPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          <div className="border-t pt-4">
+          <div className="border-t border-border pt-4">
             <p className="mb-1 font-medium">Client Signature:</p>
-            <div className="h-16 border-b border-dashed flex items-end justify-center relative">
+            <div className="h-16 border-b border-dashed border-border flex items-end justify-center relative">
               {contract.client_signed_at ? (
                 <div className="absolute inset-0 flex items-end justify-center">
                   {contract.client_signature ? (
                     <img 
-                      src={contract.client_signature}
+                      src={getSignatureImageUrl(contract.client_signature)}
                       alt="Client signature" 
-                      className="max-h-[60px] max-w-[80%] object-contain mb-1"
+                      className="max-h-[60px] max-w-[80%] object-contain mb-1 dark:filter dark:invert"
                     />
                   ) : (
                     <p className="italic font-medium text-xl mb-1">{contract.client_initials}</p>
@@ -202,21 +219,21 @@ export default function ClientContractViewPage() {
             </div>
             <p className="mt-1">
               Date: {contract.client_signed_at ? 
-                new Date(contract.client_signed_at).toLocaleDateString() : 
+                formatUTCDateTime(contract.client_signed_at) : 
                 '________________'}
             </p>
           </div>
           
-          <div className="border-t pt-4">
+          <div className="border-t border-border pt-4">
             <p className="mb-1 font-medium">Contractor Signature:</p>
-            <div className="h-16 border-b border-dashed flex items-end justify-center relative">
+            <div className="h-16 border-b border-dashed border-border flex items-end justify-center relative">
               {contract.contractor_signed_at ? (
                 <div className="absolute inset-0 flex items-end justify-center">
                   {contract.contractor_signature ? (
                     <img 
-                      src={contract.contractor_signature} 
+                      src={getSignatureImageUrl(contract.contractor_signature)}
                       alt="Contractor signature" 
-                      className="max-h-[60px] max-w-[80%] object-contain mb-1"
+                      className="max-h-[60px] max-w-[80%] object-contain mb-1 dark:filter dark:invert"
                     />
                   ) : (
                     <p className="italic font-medium text-xl mb-1">{contract.contractor_initials}</p>
@@ -232,21 +249,21 @@ export default function ClientContractViewPage() {
             </div>
             <p className="mt-1">
               Date: {contract.contractor_signed_at ? 
-                new Date(contract.contractor_signed_at).toLocaleDateString() : 
+                formatUTCDateTime(contract.contractor_signed_at) : 
                 '________________'}
             </p>
           </div>
         </div>
         
-        <div className="mt-12 text-center text-gray-500 text-sm print:mt-16">
-          <p>Contract generated on {new Date(contract.created_at).toLocaleString()}</p>
+        <div className="mt-12 text-center text-muted-foreground text-sm print:mt-16">
+          <p>Contract generated on {formatUTCDateTime(contract.created_at)}</p>
           <p>Contract ID: {contract.id}</p>
         </div>
       </div>
       
       {!contract.client_signed_at && (
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6 print:hidden">
-          <h3 className="text-lg font-bold mb-4 text-blue-800">Contract Acceptance</h3>
+        <div className="mt-8 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-6 print:hidden">
+          <h3 className="text-lg font-bold mb-4 text-blue-800 dark:text-blue-400">Contract Acceptance</h3>
           
           <div className="flex items-start space-x-3 mb-4">
             <Checkbox 
@@ -256,7 +273,7 @@ export default function ClientContractViewPage() {
                 setTermsAccepted(checked === true);
               }}
             />
-            <label htmlFor="terms" className="text-sm text-gray-700">
+            <label htmlFor="terms" className="text-sm text-foreground">
               I, {contract.client_name}, have read and agree to the terms and conditions of this contract.
               I understand that by signing this document, I am entering into a legally binding agreement.
             </label>
@@ -275,7 +292,7 @@ export default function ClientContractViewPage() {
             <Button 
               onClick={handleSignClick}
               disabled={!termsAccepted}
-              className="bg-green-600 hover:bg-green-700 min-w-[180px]"
+              className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 min-w-[180px]"
             >
               <PenLine className="mr-2 h-4 w-4" />
               Sign Contract
