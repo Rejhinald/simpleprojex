@@ -144,6 +144,7 @@ export function CreateProposalDialog({
   });
 
   const creationType = form.watch("creationType");
+  const selectedTemplateId = form.watch("templateId");
 
   // Pre-load templates - this will be awaited before dialog shows content
   const loadTemplates = useCallback(async () => {
@@ -158,7 +159,8 @@ export function CreateProposalDialog({
         if (
           response.items &&
           response.items.length > 0 &&
-          form.getValues("creationType") === "fromTemplate"
+          form.getValues("creationType") === "fromTemplate" &&
+          !form.getValues("templateId")
         ) {
           form.setValue("templateId", response.items[0].id);
         }
@@ -166,6 +168,7 @@ export function CreateProposalDialog({
         return response.items || [];
       } catch (error) {
         console.error("Failed to load templates:", error);
+        toast.error("Failed to load templates");
         return [];
       } finally {
         setIsLoadingTemplates(false);
@@ -197,7 +200,12 @@ export function CreateProposalDialog({
       setCreationProgress(0);
 
       // Load templates asynchronously - dialog already has correct size
-      await loadTemplates();
+      const loadedTemplates = await loadTemplates();
+      
+      // Auto-select first template if available
+      if (loadedTemplates.length > 0) {
+        form.setValue("templateId", loadedTemplates[0].id);
+      }
     } else {
       setIsOpen(false);
 
@@ -275,7 +283,32 @@ export function CreateProposalDialog({
   
     try {
       if (values.creationType === "fromTemplate") {
-        // ... template creation code stays the same ...
+        // Complete the template creation code
+        if (!values.templateId) {
+          throw new Error("No template selected");
+        }
+        
+        setCreationProgress(30);
+        
+        // Create the proposal from the selected template - don't assign to unused variable
+        await proposalApi.createFromTemplate({
+          name: values.name,
+          template_id: values.templateId,
+          global_markup_percentage: values.global_markup_percentage
+        });
+        
+        setCreationProgress(100);
+        
+        form.reset();
+        onProposalCreated();
+        toast.success("Proposal created successfully from template");
+        
+        setTimeout(() => {
+          setIsOpen(false);
+          setCreationProgress(0);
+        }, 500);
+        
+        return;
       } else {
         setCreationProgress(30);
         // Create the proposal from scratch first
@@ -382,7 +415,8 @@ export function CreateProposalDialog({
     if (isCreating) return true;
 
     if (creationType === "fromTemplate") {
-      return templates.length > 0 && !form.getValues("templateId");
+      // Only disable if we have templates but none is selected
+      return templates.length > 0 && !selectedTemplateId;
     }
 
     // For fromScratch, only disable on the last tab if validation fails
@@ -680,7 +714,7 @@ export function CreateProposalDialog({
                                                       (template) =>
                                                         template.id ===
                                                         field.value
-                                                    )?.name
+                                                    )?.name || "Select a template"
                                                   : "Select a template"}
                                                 <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                               </Button>
@@ -811,7 +845,10 @@ export function CreateProposalDialog({
                             <Button
                               type="button"
                               onClick={form.handleSubmit(onSubmit)}
-                              className="bg-green-600 hover:bg-green-700"
+                              className={cn(
+                                "bg-green-600 hover:bg-green-700",
+                                isSubmitButtonDisabled() && "opacity-50 cursor-not-allowed"
+                              )}
                               disabled={isSubmitButtonDisabled()}
                             >
                               {isCreating ? (
@@ -965,7 +1002,78 @@ function VariablesTab({
                             <Command>
                               <CommandList>
                                 <CommandGroup>
-                                  {/* Command items remain the same */}
+                                  <CommandItem
+                                    onSelect={() => field.onChange("SQUARE_FEET")}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      field.value === "SQUARE_FEET" &&
+                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                    )}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === "SQUARE_FEET"
+                                          ? "opacity-100 text-green-600"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    Square Feet
+                                  </CommandItem>
+                                  <CommandItem
+                                    onSelect={() => field.onChange("LINEAR_FEET")}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      field.value === "LINEAR_FEET" &&
+                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                    )}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === "LINEAR_FEET"
+                                          ? "opacity-100 text-green-600"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    Linear Feet
+                                  </CommandItem>
+                                  <CommandItem
+                                    onSelect={() => field.onChange("CUBIC_FEET")}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      field.value === "CUBIC_FEET" &&
+                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                    )}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === "CUBIC_FEET"
+                                          ? "opacity-100 text-green-600"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    Cubic Feet
+                                  </CommandItem>
+                                  <CommandItem
+                                    onSelect={() => field.onChange("COUNT")}
+                                    className={cn(
+                                      "cursor-pointer",
+                                      field.value === "COUNT" &&
+                                        "bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100"
+                                    )}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value === "COUNT"
+                                          ? "opacity-100 text-green-600"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    Count
+                                  </CommandItem>
                                 </CommandGroup>
                               </CommandList>
                             </Command>
@@ -977,7 +1085,7 @@ function VariablesTab({
                   )}
                 />
 
-                {/* New Default Value Field */}
+                {/* Default Value Field */}
                 <FormField
                   control={form.control}
                   name={`variables.${index}.default_value`}
