@@ -60,6 +60,13 @@ const SuspenseFallback = () => (
   </div>
 );
 
+// Navigation wrapper with Suspense
+const NavigationWrapper = () => (
+  <Suspense fallback={null}>
+    <NavigationEvents />
+  </Suspense>
+);
+
 function MainContent({ children }: { children: ReactNode }) {
   const { isExpanded } = useSidebarContext();
 
@@ -80,6 +87,22 @@ function MainContent({ children }: { children: ReactNode }) {
   );
 }
 
+// Sidebar wrapper component
+const SidebarWrapper = () => (
+  <div className="fixed left-0 top-0 h-full z-30 bg-background dark:bg-background shadow-lg">
+    <SidebarProvider defaultOpen={false}>
+      <SidebarNav />
+    </SidebarProvider>
+  </div>
+);
+
+// Main content wrapper with Suspense
+const MainContentWrapper = ({ children }: { children: ReactNode }) => (
+  <Suspense fallback={<SuspenseFallback />}>
+    <MainContent>{children}</MainContent>
+  </Suspense>
+);
+
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -87,27 +110,23 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <NavigationProvider>
             <SidebarContextProvider>
-              {/* Navigation event listener */}
-              <NavigationEvents />
+              {/* Navigation event listener with Suspense */}
+              <NavigationWrapper />
               
               {/* Navigation loader */}
               <NavigationLoader />
               
-              {/* This component injects CSS to fix the width issue */}
+              {/* Fixed styles for sidebar */}
               <FixedStyles />
               
               <div className="flex min-h-screen relative">
-                <div className="fixed left-0 top-0 h-full z-30 bg-background dark:bg-background shadow-lg">
-                  <SidebarProvider defaultOpen={false}>
-                    <SidebarNav />
-                  </SidebarProvider>
-                </div>
+                {/* Sidebar */}
+                <SidebarWrapper />
                 
-                <Suspense fallback={<SuspenseFallback />}>
-                  <MainContent>
-                    {children}
-                  </MainContent>
-                </Suspense>
+                {/* Main content with Suspense */}
+                <MainContentWrapper>
+                  {children}
+                </MainContentWrapper>
               </div>
             </SidebarContextProvider>
           </NavigationProvider>

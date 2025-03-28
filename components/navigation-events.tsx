@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useNavigation } from "@/app/contexts/navigation-context";
 
-export function NavigationEvents() {
+function NavigationEventsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { startNavigation, endNavigation } = useNavigation();
@@ -37,4 +37,12 @@ export function NavigationEvents() {
   }, [pathname, searchParams, startNavigation, endNavigation]);
 
   return null;
+}
+
+export function NavigationEvents() {
+  return (
+    <Suspense fallback={null}>
+      <NavigationEventsContent />
+    </Suspense>
+  );
 }
