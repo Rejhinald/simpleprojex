@@ -58,7 +58,7 @@ export default function Dashboard() {
   const [contracts, setContracts] = useState<PaginatedResponse<Contract> | null>(null);
   const [selectedTab, setSelectedTab] = useState("overview");
   const currentDateTime = format(new Date("2025-03-28T13:51:01"), "MMMM d, yyyy 'at' HH:mm:ss");
-  const username = "Rejhinald";
+  const username = "Admin";
 
   useEffect(() => {
     const fetchData = async () => {
