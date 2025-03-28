@@ -364,10 +364,10 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
               </TabsList>
             </div>
 
-            <ScrollArea className="px-6 py-4 max-h-[60vh]">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <TabsContent value="basic" className="space-y-6 mt-0">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <TabsContent value="basic" className="mt-0">
+                  <ScrollArea className="px-6 py-4" style={{ height: "400px" }}>
                     <motion.div 
                       variants={fadeIn}
                       initial="hidden"
@@ -412,9 +412,11 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
                         )}
                       />
                     </motion.div>
-                  </TabsContent>
+                  </ScrollArea>
+                </TabsContent>
 
-                  <TabsContent value="variables" className="space-y-6 mt-0">
+                <TabsContent value="variables" className="mt-0">
+                  <ScrollArea className="px-6 py-4" style={{ height: "400px" }}>
                     {validationErrors.variables && (
                       <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
                         <AlertCircle className="h-4 w-4" />
@@ -424,9 +426,11 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
                       </Alert>
                     )}
                     <TemplateVariablesTab form={form} />
-                  </TabsContent>
+                  </ScrollArea>
+                </TabsContent>
 
-                  <TabsContent value="categories" className="space-y-6 mt-0">
+                <TabsContent value="categories" className="mt-0">
+                  <ScrollArea className="px-6 py-4" style={{ height: "400px" }}>
                     {validationErrors.categories && (
                       <Alert variant="destructive" className="mb-4 bg-red-50 text-red-800 border-red-200">
                         <AlertCircle className="h-4 w-4" />
@@ -436,10 +440,10 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
                       </Alert>
                     )}
                     <TemplateCategoriesTab form={form} />
-                  </TabsContent>
-                </form>
-              </Form>
-            </ScrollArea>
+                  </ScrollArea>
+                </TabsContent>
+              </form>
+            </Form>
           </Tabs>
 
           <DialogFooter className="bg-muted/40 p-6 flex flex-row items-center justify-between sm:justify-between">
