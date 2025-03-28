@@ -3,37 +3,34 @@
 import { motion } from "framer-motion";
 import { X, Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TemplateCard } from "./TemplateCard";
-import { TemplateWithDetails } from "../utils/template-utils";
-import { useTemplateContext } from '../contexts/TemplateContext';
-import { Element } from '@/app/api/apiService';
+import { ProposalCard } from "./ProposalCard";
+import { ProposalWithDetails } from "../utils/proposal-utils";
+import { useProposalContext } from "../contexts/ProposalContext";
 
-export interface TemplateListProps {
-  templates: TemplateWithDetails[];
+interface ProposalListProps {
+  proposals: ProposalWithDetails[];
   error: string | null;
   detailsLoading: Record<number, boolean>;
   onRetry: () => void;
   onDelete: (id: number) => void;
-  onCreateNew: () => void;
+  onGenerateContract?: (id: number) => void;
   searchQuery: string;
   hasFilters: boolean;
-  categoryElements: Record<number, Element[]>;
-  setCategoryElements: React.Dispatch<React.SetStateAction<Record<number, Element[]>>>;
+  onCreateNew: () => void;
 }
 
-  export function TemplateList({
-    templates,
-    error,
-    detailsLoading,
-    onRetry,
-    onDelete,
-    onCreateNew,
-    searchQuery,
-    hasFilters,
-    categoryElements,
-    setCategoryElements
-  }: TemplateListProps) {
-  const { expandedId, setExpandedId } = useTemplateContext();
+export function ProposalList({
+  proposals,
+  error,
+  detailsLoading,
+  onRetry,
+  onDelete,
+  onCreateNew,
+  onGenerateContract,
+  searchQuery,
+  hasFilters,
+}: ProposalListProps) {
+  const { } = useProposalContext();
   
   if (error) {
     return (
@@ -54,7 +51,7 @@ export interface TemplateListProps {
     );
   }
 
-  if (templates.length === 0) {
+  if (proposals.length === 0) {
     return (
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
@@ -62,22 +59,22 @@ export interface TemplateListProps {
         className="text-center py-12 space-y-4 w-full"
       >
         <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="text-lg font-medium">No templates found</h3>
+        <h3 className="text-lg font-medium">No proposals found</h3>
         {searchQuery || hasFilters ? (
           <p className="text-muted-foreground">
-            No templates match your search criteria or filters
+            No proposals match your search criteria or filters
           </p>
         ) : (
           <p className="text-muted-foreground">
-            Get started by creating your first template
+            Get started by creating your first proposal
           </p>
         )}
         <Button 
-          className="mt-2 bg-blue-600 hover:bg-blue-700"
+          className="mt-2 bg-green-600 hover:bg-green-700"
           onClick={onCreateNew}
         >
           <Plus className="mr-2 h-4 w-4" />
-          Create Your First Template
+          Create Your First Proposal
         </Button>
       </motion.div>
     );
@@ -89,18 +86,14 @@ export interface TemplateListProps {
       animate={{ opacity: 1 }}
       className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 w-full"
     >
-      {templates.map(template => (
-        <TemplateCard
-          key={template.id}
-          template={template}
-          isExpanded={expandedId === template.id}
-          onToggleExpand={() => setExpandedId(expandedId === template.id ? null : template.id)}
-          isLoading={detailsLoading[template.id] || false}
+      {proposals.map(proposal => (
+        <ProposalCard
+          key={proposal.id}
+          proposal={proposal}
+          isLoading={detailsLoading[proposal.id] || false}
           onDelete={onDelete}
-          categoryElements={categoryElements}
-          setCategoryElements={setCategoryElements} forceRefreshAll={function (): void {
-            throw new Error("Function not implemented.");
-          } }        />
+          onGenerateContract={onGenerateContract}
+        />
       ))}
     </motion.div>
   );

@@ -26,26 +26,32 @@ export default function TemplatesPage() {
     error,
     detailsLoading,
     loadTemplates,
+    refreshTemplates,  // Use the new function
     deleteTemplate,
     filterTemplates
-  } = useTemplates(categoryElements); // Pass categoryElements here
+  } = useTemplates(categoryElements);
 
+  // Initial load
   useEffect(() => {
     void loadTemplates();
-  }, []);
+  }, [loadTemplates]);
   
+  // Filter templates when search/filters change
   useEffect(() => {
     filterTemplates(searchQuery, filters);
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, filterTemplates]);
   
+  // Search handling
   const handleSearchChange = (query: string) => {
     setSearchQuery(query);
   };
   
+  // Filter handling
   const handleFiltersChange = (newFilters: TemplateFilters) => {
     setFilters(newFilters);
   };
   
+  // Delete handling
   const handleDeleteClick = (id: number) => {
     setTemplateToDelete(id);
     setDeleteDialogOpen(true);
@@ -91,7 +97,7 @@ export default function TemplatesPage() {
             </motion.p>
           </div>
 
-          <CreateTemplateDialog onTemplateCreated={loadTemplates} />
+          <CreateTemplateDialog onTemplateCreated={refreshTemplates} />
         </div>
         
         {/* Search and filter area */}
@@ -108,25 +114,25 @@ export default function TemplatesPage() {
         
         {/* Content section */}
         <div className="w-full flex-1 pb-8">
-        {loading ? (
-          <TemplateSkeletons />
-        ) : (
-          <TemplateList
-            templates={filteredTemplates}
-            error={error}
-            detailsLoading={detailsLoading}
-            onRetry={loadTemplates}
-            onDelete={handleDeleteClick}
-            onCreateNew={() => {
-              document.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"]')?.click();
-            }}
-            searchQuery={searchQuery}
-            hasFilters={hasActiveFilters()}
-            categoryElements={categoryElements}
-            setCategoryElements={setCategoryElements}
-          />
-        )}
-      </div>
+          {loading ? (
+            <TemplateSkeletons />
+          ) : (
+            <TemplateList
+              templates={filteredTemplates}
+              error={error}
+              detailsLoading={detailsLoading}
+              onRetry={refreshTemplates}
+              onDelete={handleDeleteClick}
+              onCreateNew={() => {
+                document.querySelector<HTMLButtonElement>('[aria-haspopup="dialog"]')?.click();
+              }}
+              searchQuery={searchQuery}
+              hasFilters={hasActiveFilters()}
+              categoryElements={categoryElements}
+              setCategoryElements={setCategoryElements}
+            />
+          )}
+        </div>
         
         <DeleteConfirmationDialog
           open={deleteDialogOpen}

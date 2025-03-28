@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Search, Filter, Calendar, VariableIcon, Layers, CircleDot, Tag, FileText, ChevronDown } from "lucide-react";
+import { Search, Filter, Calendar, VariableIcon, Layers, CircleDot, Tag, FileText, ChevronDown, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +87,17 @@ interface TemplateFiltersProps {
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
             />
+            {searchQuery && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => onSearchChange('')}
+                className="absolute right-[70px] top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted/50 text-muted-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 

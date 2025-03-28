@@ -39,7 +39,7 @@ import { useSidebarContext } from "@/app/contexts/sidebar-context";
 export function SidebarNav() {
   const pathname = usePathname();
   const [currentDate, setCurrentDate] = useState("2025-03-26 19:01:55");
-  const username = "Rejhinald";
+  const username = "Admin";
   const { open, setOpen } = useSidebar();
   const [isMounted, setIsMounted] = useState(false);
   const [isThemeToggleOpen, setIsThemeToggleOpen] = useState(false);

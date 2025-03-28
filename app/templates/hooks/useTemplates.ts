@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { templateApi, PaginatedResponse, Element } from "../../api/apiService";
 import { toast } from "sonner";
 import { 
@@ -12,6 +12,9 @@ import {
   sortTemplates
 } from "../utils/template-utils";
 
+// Key used for template refresh notifications
+const TEMPLATE_REFRESH_KEY = "last_template_refresh";
+
 export function useTemplates(categoryElements: Record<number, Element[]>) {
   const [templates, setTemplates] = useState<TemplateWithDetails[]>([]);
   const [filteredTemplates, setFilteredTemplates] = useState<TemplateWithDetails[]>([]);
@@ -19,6 +22,9 @@ export function useTemplates(categoryElements: Record<number, Element[]>) {
   const [detailsLoading, setDetailsLoading] = useState<Record<number, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [expandedTemplates, setExpandedTemplates] = useState<Record<number, boolean>>({});
+  
+  // Track the last refresh timestamp to prevent duplicate refreshes
+  const lastRefreshTimeRef = useRef<string | null>(null);
 
   const loadTemplateDetails = async (id: number): Promise<void> => {
     if (detailsLoading[id] || templates.find(t => t.id === id)?.variables || templates.find(t => t.id === id)?.categories) {
@@ -44,7 +50,7 @@ export function useTemplates(categoryElements: Record<number, Element[]>) {
     }
   };
 
-  const loadTemplates = async (): Promise<void> => {
+  const loadTemplates = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       const data: PaginatedResponse<TemplateWithDetails> = await templateApi.list();
@@ -62,7 +68,7 @@ export function useTemplates(categoryElements: Record<number, Element[]>) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadAllTemplateDetails = async (): Promise<void> => {
     const templatesNeedingDetails = templates.filter(
@@ -105,7 +111,15 @@ export function useTemplates(categoryElements: Record<number, Element[]>) {
   const deleteTemplate = async (id: number): Promise<boolean> => {
     try {
       await templateApi.delete(id);
+      
+      // Set refresh marker for other components
+      const timestamp = Date.now().toString();
+      lastRefreshTimeRef.current = timestamp;
+      localStorage.setItem(TEMPLATE_REFRESH_KEY, timestamp);
+      
+      // Reload templates in this component
       await loadTemplates();
+      
       toast.success("Template deleted successfully");
       return true;
     } catch (err) {
@@ -144,7 +158,46 @@ export function useTemplates(categoryElements: Record<number, Element[]>) {
     result = sortTemplates(result, filters.sortBy, filters.sortDirection);
     
     setFilteredTemplates(result);
-  }, [templates, categoryElements]); // Add categoryElements to dependencies
+  }, [templates, categoryElements]);
+
+  // Listen for localStorage changes to detect refreshes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === TEMPLATE_REFRESH_KEY && e.newValue && e.newValue !== lastRefreshTimeRef.current) {
+        lastRefreshTimeRef.current = e.newValue;
+        loadTemplates();
+      }
+    };
+    
+    // Check once on mount
+    const checkForRefreshMarker = () => {
+      const timestamp = localStorage.getItem(TEMPLATE_REFRESH_KEY);
+      if (timestamp && timestamp !== lastRefreshTimeRef.current) {
+        lastRefreshTimeRef.current = timestamp;
+        localStorage.removeItem(TEMPLATE_REFRESH_KEY);
+        loadTemplates();
+      }
+    };
+    
+    checkForRefreshMarker();
+    
+    // Listen for future changes
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadTemplates]);
+
+  // Function to manually trigger a refresh
+  const refreshTemplates = useCallback(() => {
+    // Set refresh marker
+    const timestamp = Date.now().toString();
+    lastRefreshTimeRef.current = timestamp;
+    localStorage.setItem(TEMPLATE_REFRESH_KEY, timestamp);
+    
+    // Reload templates
+    return loadTemplates();
+  }, [loadTemplates]);
 
   return {
     templates,
@@ -154,6 +207,7 @@ export function useTemplates(categoryElements: Record<number, Element[]>) {
     detailsLoading,
     expandedTemplates,
     loadTemplates,
+    refreshTemplates,  // New function to manually trigger refresh
     loadAllTemplateDetails,
     deleteTemplate,
     toggleTemplateExpand,
