@@ -154,7 +154,7 @@ export interface SignContractRequest {
 }
 
 // API Service for interacting with the backend
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://https://rejhinald.pythonanywhere.com/api';
 
 // Generic API methods
 async function fetchData<T>(endpoint: string): Promise<T> {
