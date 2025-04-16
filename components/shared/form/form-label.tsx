@@ -1,26 +1,25 @@
-"use client"
+'use client'
 
-import * as React from "react"
+import React from "react"
 import * as LabelPrimitive from "@radix-ui/react-label"
-
+import {Label} from "@/components/shared"
 import { cn } from "@/lib/utils"
 import { useFormField } from "@/hooks/use-form-field"
 
-import { Label } from "@/components/shared"
-
-export function FormLabel({
-  className,
-  ...props
-}: React.ComponentProps<typeof LabelPrimitive.Root>) {
+const FormLabel = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => {
   const { error, formItemId } = useFormField()
 
   return (
     <Label
-      data-slot="form-label"
-      data-error={!!error}
-      className={cn("data-[error=true]:text-destructive", className)}
+      ref={ref}
+      className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
       {...props}
     />
   )
-}
+})
+FormLabel.displayName = "FormLabel"
+export { FormLabel }

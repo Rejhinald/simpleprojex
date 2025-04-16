@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Input,  Button } from "@/components/shared";
+import { Input, Button } from "@/components/shared";
 import { Search } from "lucide-react";
 
 interface SearchComponentProps {
   onChange?: (query: string) => void;
   value?: string;
+  className?: string;
 }
 
 export function SearchComponent({ onChange, value = "" }: SearchComponentProps) {
@@ -39,7 +40,12 @@ export function SearchComponent({ onChange, value = "" }: SearchComponentProps) 
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
         />
       </div>
-      <Button className="uppercase font-bold" onClick={handleSearch}>Search</Button>
+      <Button
+        className="rounded-lg px-4 py-2 text-sm font-normal bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm transition-all duration-150"
+        onClick={handleSearch}
+      >
+        Search
+      </Button>
     </div>
   );
 }

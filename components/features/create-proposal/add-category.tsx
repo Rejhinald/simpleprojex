@@ -28,7 +28,6 @@ export default function AddCategory({
   setNewCategory,
   handleAddCategory,
 }: AddCategoryProps) {
-  // Ensure newCategory is never undefined with a default value
   const category = newCategory || { name: "" };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

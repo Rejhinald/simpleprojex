@@ -1,37 +1,5 @@
 import { useState, useEffect } from "react";
-
-interface User {
-  id: string;
-  email: string;
-  username: string;
-}
-
-interface Module {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Parameter {
-  id: number;
-  name: string;
-  value: number;
-  category: string;
-}
-
-interface Template {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-  user: User;
-  modules: Module[];
-  parameters: Parameter[];
-  image: string;
-}
+import {Template} from "@/types/templates";
 
 interface GetTemplatesResult {
   templates: Template[];

@@ -4,8 +4,7 @@ export type Parameter = {
   id: number;
   name: string;
   type: string;
-  description?: string;
-  category?: string;
+  description: string;
 };
 
 export const useParameters = () => {
@@ -18,7 +17,6 @@ export const useParameters = () => {
     setError(null);
     
     try {
-      // Get JWT token from cookies
       const cookies = document.cookie.split(';');
       const authTokenCookie = cookies.find(cookie => cookie.trim().startsWith('auth-token='));
       const token = authTokenCookie ? authTokenCookie.split('=')[1].trim() : null;
@@ -35,7 +33,6 @@ export const useParameters = () => {
       }
       
       const data = await response.json();
-      console.log('Fetched parameters:', data);
       setParameters(data);
     } catch (err) {
       console.error('Failed to fetch parameters:', err);

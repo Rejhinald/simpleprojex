@@ -1,4 +1,4 @@
-import { Sidenav } from "@/components/ui/sidebar";
+import { Sidenav } from "@/components/ui/sidebar/sidebar";
 
 export default function SiteLayout({
   children,

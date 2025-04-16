@@ -7,4 +7,5 @@ export type SortOption = {
 export interface SortByComponentProps {
   onChange?: (sortOption: SortOption) => void;
   initialValue?: string;
+  className?: string;
 }

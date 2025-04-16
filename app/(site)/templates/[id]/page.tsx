@@ -3,7 +3,7 @@
 import React, { use } from "react";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Badge, Separator } from "@/components/shared";
+import { Separator } from "@/components/shared";
 import { getTemplateById } from "@/hooks/api/templates/get-template-id";
 import {
   getTemplateElements,
@@ -28,8 +28,6 @@ export default function TemplatePage({
     error: elementsError,
   } = getTemplateElements(id);
 
-console.log(template)
-console.log(elements)
   const error = templateError || elementsError;
   const isLoading = isLoadingTemplate || isLoadingElements;
 

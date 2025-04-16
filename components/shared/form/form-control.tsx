@@ -1,20 +1,28 @@
-"use client"
-
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-
+import React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { useFormField } from "@/hooks/use-form-field"
 
-export function FormControl({ ...props }: React.ComponentProps<typeof Slot>) {
-  const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
+const FormControl = React.forwardRef<
+  React.ElementRef<typeof Slot>,
+  React.ComponentPropsWithoutRef<typeof Slot>
+>(({ ...props }, ref) => {
+  const { error, formItemId, formDescriptionId, formMessageId } =
+    useFormField();
 
   return (
     <Slot
-      data-slot="form-control"
+      ref={ref}
       id={formItemId}
-      aria-describedby={!error ? `${formDescriptionId}` : `${formDescriptionId} ${formMessageId}`}
+      aria-describedby={
+        !error
+          ? `${formDescriptionId}`
+          : `${formDescriptionId} ${formMessageId}`
+      }
       aria-invalid={!!error}
       {...props}
     />
-  )
-}
+  );
+});
+FormControl.displayName = "FormControl";
+
+export { FormControl };

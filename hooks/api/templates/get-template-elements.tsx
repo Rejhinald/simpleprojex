@@ -8,16 +8,10 @@ export interface TemplateElement {
   element_id: number;
   name: string;
   module: string;
-  formula: string;
-  labor_formula: string;
-  material_cost: number;
-  labor_cost: number;
-  category_id?: number;
-  category_name?: string;
-  description?: string;
-  image?: string;
+  material_cost: string;
+  labor_cost: string;
+  image: string;
   selected: boolean;
-  
 }
 
 interface GetTemplateElementsResult {

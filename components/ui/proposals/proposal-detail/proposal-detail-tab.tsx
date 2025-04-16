@@ -33,12 +33,12 @@ const convertParametersToVariables = (parameters: ProjectParameter[]) => {
 
 const calculateMaterialCost = (element: ProjectElement, parameters: ProjectParameter[]) => {
   const variables = convertParametersToVariables(parameters);
-  return Number(calculateCost(element.formula, variables).toFixed(2));
+  return Number(calculateCost(element.element.formula, variables).toFixed(2));
 };
 
 const calculateLaborCost = (element: ProjectElement, parameters: ProjectParameter[]) => {
   const variables = convertParametersToVariables(parameters);
-  return Number(calculateCost(element.labor_formula, variables).toFixed(2));
+  return Number(calculateCost(element.element.labor_formula, variables).toFixed(2));
 };
 
 export default function ProposalDetailTab({
@@ -91,10 +91,10 @@ export default function ProposalDetailTab({
                               {element.element.name}
                             </TableCell>
                             <TableCell>
-                              {element.formula}
+                              {element.element.formula}
                             </TableCell>
                             <TableCell>
-                              {element.labor_formula}
+                              {element.element.labor_formula}
                             </TableCell>
                             <TableCell className="text-right">
                               {calculateMaterialCost(element, proposal.project_parameters)}

@@ -17,18 +17,18 @@ import {
   CommandList,
   Badge,
 } from "@/components/shared";
-import type { Variable } from "@/types/proposals";
 import { Check, Plus, X } from "lucide-react";
+import { ProjectParameter } from "@/types/proposals";
 
 interface FormulaBuilderProps {
-  variables: Variable[];
+  parameters: ProjectParameter[];
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }
 
 export function FormulaBuilder({
-  variables,
+  parameters,
   value,
   onChange,
   placeholder,
@@ -50,17 +50,17 @@ export function FormulaBuilder({
     return matches ? matches[0].trim() : "";
   };
 
-  // Filter variables based on the current word
-  const filteredVariables = useMemo(() => {
+  // Filter parameters based on the current word
+  const filteredParameters = useMemo(() => {
     const currentWord = getCurrentWord(inputValue, cursorPosition);
     if (!currentWord) return [];
 
-    return variables.filter((variable) =>
-      variable.name.toLowerCase().includes(currentWord.toLowerCase())
+    return parameters.filter((parameter) =>
+      parameter.name.toLowerCase().includes(currentWord.toLowerCase())
     );
-  }, [variables, inputValue, cursorPosition]);
+  }, [parameters, inputValue, cursorPosition]);
 
-  const insertVariable = (variable: Variable) => {
+  const insertParameter = (parameter: ProjectParameter) => {
     const input = inputRef.current;
     if (!input) return;
 
@@ -73,20 +73,20 @@ export function FormulaBuilder({
       ? beforeCursor.length - wordStartMatch[0].length
       : cursorPosition;
 
-    // Replace the current word with the variable name
+    // Replace the current word with the parameter name
     const newValue =
-      inputValue.substring(0, wordStart) + variable.name + afterCursor;
+      inputValue.substring(0, wordStart) + parameter.name + afterCursor;
     setInputValue(newValue);
     onChange(newValue);
 
     // Close the suggestions
     setSuggestionsOpen(false);
 
-    // Focus back on the input and set cursor position after the inserted variable
+    // Focus back on the input and set cursor position after the inserted parameter
     setTimeout(() => {
       if (input) {
         input.focus();
-        const newCursorPosition = wordStart + variable.name.length;
+        const newCursorPosition = wordStart + parameter.name.length;
         input.setSelectionRange(newCursorPosition, newCursorPosition);
         setCursorPosition(newCursorPosition);
       }
@@ -115,10 +115,10 @@ export function FormulaBuilder({
     }, 0);
 
     // Handle special keys for suggestion navigation
-    if (suggestionsOpen && filteredVariables.length > 0) {
+    if (suggestionsOpen && filteredParameters.length > 0) {
       if (e.key === "Tab" || e.key === "Enter") {
         e.preventDefault();
-        insertVariable(filteredVariables[0]);
+        insertParameter(filteredParameters[0]);
       } else if (e.key === "Escape") {
         setSuggestionsOpen(false);
       }
@@ -154,15 +154,15 @@ export function FormulaBuilder({
     }, 0);
   };
 
-  // Highlight variable names in the formula
+  // Highlight parameter names in the formula
   const highlightedFormula = useMemo(() => {
     let formula = inputValue;
-    const variableNames = variables
+    const parameterNames = parameters
       .map((v) => v.name)
-      .sort((a, b) => b.length - a.length); // Sort by length to match longest first
+      .sort((a, b) => b.length - a.length); 
 
-    // Replace variable names with highlighted spans
-    variableNames.forEach((name) => {
+    // Replace parameter names with highlighted spans
+    parameterNames.forEach((name) => {
       const regex = new RegExp(`\\b${name}\\b`, "g");
       formula = formula.replace(
         regex,
@@ -171,7 +171,7 @@ export function FormulaBuilder({
     });
 
     return formula;
-  }, [inputValue, variables]);
+  }, [inputValue, parameters]);
 
   return (
     <div className="space-y-2">
@@ -213,31 +213,31 @@ export function FormulaBuilder({
             <PopoverTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0">
                 <Plus className="h-4 w-4" />
-                <span className="sr-only">Add variable</span>
+                <span className="sr-only">Add parameter</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0" align="end">
               <Command>
-                <CommandInput placeholder="Search variables..." />
+                <CommandInput placeholder="Search parameters..." />
                 <CommandList>
-                  <CommandEmpty>No variables found.</CommandEmpty>
-                  <CommandGroup heading="Variables">
-                    {variables.map((variable) => (
+                  <CommandEmpty>No parameters found.</CommandEmpty>
+                  <CommandGroup heading="Parameters">
+                    {parameters.map((parameter) => (
                       <CommandItem
-                        key={variable.id}
-                        value={variable.name}
-                        onSelect={() => insertVariable(variable)}
+                        key={parameter.id}
+                        value={parameter.name}
+                        onSelect={() => insertParameter(parameter)}
                       >
                         <Check
                           className={`mr-2 h-4 w-4 ${
-                            inputValue.includes(variable.name)
+                            inputValue.includes(parameter.name)
                               ? "opacity-100"
                               : "opacity-0"
                           }`}
                         />
-                        {variable.name}
+                        {parameter.name}
                         <Badge variant="outline" className="ml-2 text-xs">
-                          {variable.type}
+                          {parameter.type}
                         </Badge>
                       </CommandItem>
                     ))}
@@ -248,19 +248,19 @@ export function FormulaBuilder({
           </Popover>
         </div>
 
-        {/* Variable suggestions dropdown */}
-        {suggestionsOpen && filteredVariables.length > 0 && (
+        {/* Parameter suggestions dropdown */}
+        {suggestionsOpen && filteredParameters.length > 0 && (
           <div className="absolute left-0 z-10 mt-1 w-full rounded-md border bg-popover shadow-md">
             <div className="max-h-60 overflow-auto p-1">
-              {filteredVariables.map((variable) => (
+              {filteredParameters.map((parameter) => (
                 <div
-                  key={variable.id}
+                  key={parameter.id}
                   className="flex cursor-pointer items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => insertVariable(variable)}
+                  onClick={() => insertParameter(parameter)}
                 >
-                  <div className="font-medium">{variable.name}</div>
+                  <div className="font-medium">{parameter.name}</div>
                   <Badge variant="outline" className="text-xs">
-                    {variable.type}
+                    {parameter.type}
                   </Badge>
                 </div>
               ))}
@@ -327,7 +327,7 @@ export function FormulaBuilder({
         </Button>
       </div>
 
-      {/* Formula preview with highlighted variables */}
+      {/* Formula preview with highlighted parameters */}
       {inputValue && (
         <div className="rounded-md border bg-muted/30 p-2 text-sm">
           <div

@@ -1,23 +1,25 @@
 import { useEffect, useState } from 'react';
+import Cookies from 'js-cookie';
 
 export type Module = {
   id: number;
   name: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-  elements?: Element[];
+  // description: string;
+  // created_at: string;
+  // updated_at: string;
+  elements: Element[];
 };
 
 export type Element = {
   id: number;
   name: string;
-  description?: string;
-  material_cost?: string;
-  labor_cost?: string;
-  module_id: number;
-  created_at: string;
-  updated_at: string;
+  // description?: string;
+  formula: string;
+  labor_formula: string;
+  // module_id: number;
+  // created_at: string;
+  // updated_at: string;
+  
 };
 
 export const useCategories = () => {
@@ -30,10 +32,7 @@ export const useCategories = () => {
     setError(null);
     
     try {
-      // Get JWT token from cookies
-      const cookies = document.cookie.split(';');
-      const authTokenCookie = cookies.find(cookie => cookie.trim().startsWith('auth-token='));
-      const token = authTokenCookie ? authTokenCookie.split('=')[1].trim() : null;
+      const token = Cookies.get('auth-token')
       const apiUrl = process.env.NEXT_PUBLIC_API_URL
       
       // Fetch modules

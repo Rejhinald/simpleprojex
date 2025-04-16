@@ -44,7 +44,7 @@ const calculateMaterialCost = (
   parameters: ProjectParameter[]
 ) => {
   const variables = convertParametersToVariables(parameters);
-  return Number(calculateCost(element.formula, variables).toFixed(2));
+  return Number(calculateCost(element.element.formula, variables).toFixed(2));
 };
 
 const calculateLaborCost = (
@@ -52,7 +52,7 @@ const calculateLaborCost = (
   parameters: ProjectParameter[]
 ) => {
   const variables = convertParametersToVariables(parameters);
-  return Number(calculateCost(element.labor_formula, variables).toFixed(2));
+  return Number(calculateCost(element.element.labor_formula, variables).toFixed(2));
 };
 
 export default function ContractDetailTab({
@@ -64,7 +64,7 @@ export default function ContractDetailTab({
   const { postContract, isLoading, isSuccess, error } =
     usePostContractDetails();
   const [contractId, setContractId] = useState<string | null>(null);
-  // Initialize the getContractById hook to fetch contract data
+
   const {
     contract,
     isLoading: isLoadingContract,
@@ -159,8 +159,8 @@ Payment schedule:
                 id: element.project_module.id,
                 module: element.project_module.module,
               },
-              formula: element.formula,
-              labor_formula: element.labor_formula,
+              formula: element.element.formula,
+              labor_formula: element.element.labor_formula,
               image: "", // Removed non-existent property
             }))
           : [],
@@ -172,7 +172,6 @@ Payment schedule:
           : [],
       },
     ];
-console.log(payload)
     return payload;
   };
 
@@ -183,7 +182,6 @@ console.log(payload)
     // If turning off edit mode, transform and log the data
     if (!checked) {
       const payload = transformContractData();
-      console.log("Payload data (would send to API):", payload);
       setPayloadData(payload);
     }
   };
@@ -425,9 +423,9 @@ console.log(payload)
                                         <TableCell className="font-medium">
                                           {element.element.name}
                                         </TableCell>
-                                        <TableCell>{element.formula}</TableCell>
+                                        <TableCell>{element.element.formula}</TableCell>
                                         <TableCell>
-                                          {element.labor_formula}
+                                          {element.element.labor_formula}
                                         </TableCell>
                                         <TableCell className="text-right">
                                           $

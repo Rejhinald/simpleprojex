@@ -1,59 +1,7 @@
 'use client'
 
 import { useState, useEffect } from "react";
-
-interface User {
-  id: string;
-  email: string;
-  username: string;
-}
-
-interface Module {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Parameter {
-  id: number;
-  name: string;
-  value: number;
-  type: string;
-}
-
-interface Element {
-  id: number;
-  name: string;
-  material_cost: number;
-  labor_cost: number;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  elements?: Element[];
-}
-
-interface Variable {
-  name: string;
-  type: string;
-}
-
-interface Template {
-  id: number;
-  name: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-  user: User;
-  modules: Module[];
-  parameters: Parameter[];
-  categories: Category[];
-  variables: Variable[];
-  image: string;
-}
+import { Template } from "@/types/templates";
 
 interface GetTemplateByIdResult {
   template: Template | null;

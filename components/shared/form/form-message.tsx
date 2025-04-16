@@ -1,13 +1,15 @@
-"use client"
+'use client'
 
-import * as React from "react"
-
+import React from "react"
 import { cn } from "@/lib/utils"
 import { useFormField } from "@/hooks/use-form-field"
 
-export function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
+const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : props.children
+  const body = error ? String(error?.message ?? "") : children
 
   if (!body) {
     return null
@@ -15,12 +17,14 @@ export function FormMessage({ className, ...props }: React.ComponentProps<"p">) 
 
   return (
     <p
-      data-slot="form-message"
+      ref={ref}
       id={formMessageId}
-      className={cn("text-destructive text-sm", className)}
+      className={cn("text-[0.8rem] font-medium text-destructive", className)}
       {...props}
     >
       {body}
     </p>
   )
-}
+})
+FormMessage.displayName = "FormMessage"
+export { FormMessage }

@@ -33,6 +33,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ProposalDetailTab from "@/components/ui/proposals/proposal-detail/proposal-detail-tab";
 import ContractDetailTab from "@/components/ui/proposals/proposal-detail/contract-detail-tab";
+import { Suspense } from "react";
 
 export default function ProposalDetailPage({
   params,
@@ -47,7 +48,6 @@ export default function ProposalDetailPage({
     tabParam === "contract" ? "contract" : "proposal"
   );
   const { proposal, isLoading, error } = getProposalById(id);
-  console.log(proposal);
   const [totalAmount, setTotalAmount] = useState<number>(0);
 
   const handleTabChange = (value: string) => {
@@ -136,76 +136,78 @@ export default function ProposalDetailPage({
   }
 
   return (
-    <div>
-      <div className="container mx-auto px-4">
-        <div className="relative w-full h-[300px] mt-6 mb-6 overflow-hidden rounded-xl">
-          <Image
-            src={proposal.image || "/placeholder-image.jpg"}
-            alt={proposal.name}
-            fill
-            className="object-cover"
-            priority
-          />
-        </div>
-        <div className="space-y-8 pb-20">
-          <Tabs
-            defaultValue={activeTab}
-            value={activeTab}
-            onValueChange={handleTabChange}
-            className="w-full"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-4xl font-bold tracking-tight">
-                    {proposal.name}
-                  </h1>
-                  <Badge variant="outline" className="ml-2">
-                    {new Date(proposal.created_at) >
-                    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                      ? "New"
-                      : "Active"}
-                  </Badge>
+    <Suspense fallback={<div>Loading...</div>}>
+      <div>
+        <div className="container mx-auto px-4">
+          <div className="relative w-full h-[300px] mt-6 mb-6 overflow-hidden rounded-xl">
+            <Image
+              src={proposal.image || "/placeholder-image.jpg"}
+              alt={proposal.name}
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+          <div className="space-y-8 pb-20">
+            <Tabs
+              defaultValue={activeTab}
+              value={activeTab}
+              onValueChange={handleTabChange}
+              className="w-full"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-4xl font-bold tracking-tight">
+                      {proposal.name}
+                    </h1>
+                    <Badge variant="outline" className="ml-2">
+                      {new Date(proposal.created_at) >
+                      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                        ? "New"
+                        : "Active"}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-sm">
+                    <span>
+                      Created on{" "}
+                      {new Date(proposal.created_at).toLocaleDateString()}
+                    </span>
+                    <span>•</span>
+                    <span>Client: {proposal.client_name}</span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-sm">
-                  <span>
-                    Created on{" "}
-                    {new Date(proposal.created_at).toLocaleDateString()}
-                  </span>
-                  <span>•</span>
-                  <span>Client: {proposal.client_name}</span>
+                <div className="flex justify-start mb-6">
+                  <TabsList className="w-fit">
+                    <TabsTrigger value="proposal">
+                      <FileText className="h-4 w-4 mr-1" />
+                      Proposal Details
+                    </TabsTrigger>
+                    <TabsTrigger value="contract">
+                      <File className="h-4 w-4 mr-1" />
+                      Contract Details
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
               </div>
-              <div className="flex justify-start mb-6">
-                <TabsList className="w-fit">
-                  <TabsTrigger value="proposal">
-                    <FileText className="h-4 w-4 mr-1" />
-                    Proposal Details
-                  </TabsTrigger>
-                  <TabsTrigger value="contract">
-                    <File className="h-4 w-4 mr-1" />
-                    Contract Details
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </div>
-            <Separator className="mb-2" />
+              <Separator className="mb-2" />
 
-            <TabsContent value="proposal">
-              <ProposalDetailTab
-                proposal={proposal}
-                totalAmount={totalAmount}
-              />
-            </TabsContent>
-            <TabsContent value="contract">
-              <ContractDetailTab
-                proposal={proposal}
-                totalAmount={totalAmount}
-              />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="proposal">
+                <ProposalDetailTab
+                  proposal={proposal}
+                  totalAmount={totalAmount}
+                />
+              </TabsContent>
+              <TabsContent value="contract">
+                <ContractDetailTab
+                  proposal={proposal}
+                  totalAmount={totalAmount}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
         </div>
       </div>
-    </div>
+    </Suspense>
   );
 }

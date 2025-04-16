@@ -1,19 +1,24 @@
-"use client"
+'use client'
 
-import * as React from "react"
-
-import { cn } from "@/lib/utils"
+import React from "react";
+import { cn } from "@/lib/utils";
 import { useFormField } from "@/hooks/use-form-field"
 
-export function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
-  const { formDescriptionId } = useFormField()
+const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { formDescriptionId } = useFormField();
 
   return (
     <p
-      data-slot="form-description"
+      ref={ref}
       id={formDescriptionId}
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-[0.8rem] text-muted-foreground", className)}
       {...props}
     />
-  )
-}
+  );
+});
+FormDescription.displayName = "FormDescription";
+
+export { FormDescription };

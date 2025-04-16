@@ -1,11 +1,12 @@
 import React, { useMemo } from "react";
-import { ExternalLink } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/shared";
 import { ProposalsGridProps } from "@/types/proposals";
 import { getProposals } from "@/hooks/api/proposals/get-proposals";
 import { ListLoader } from "@/components/loader/list-loader";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function ProposalListView({
   sortOption,
@@ -14,9 +15,12 @@ export default function ProposalListView({
   const { proposals, isLoading, error } = getProposals();
 
   const filteredAndSortedProposals = useMemo(() => {
+    if (!Array.isArray(proposals)) return [];
+    
     const filtered = searchQuery
       ? proposals.filter((proposal) =>
-          proposal.name.toLowerCase().includes(searchQuery.toLowerCase())
+          proposal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (proposal.description && proposal.description.toLowerCase().includes(searchQuery.toLowerCase()))
         )
       : proposals;
 
@@ -26,13 +30,31 @@ export default function ProposalListView({
       } else if (sortOption.value === "name-descending") {
         return b.name.localeCompare(a.name);
       } else if (sortOption.value === "date-ascending") {
-        return (
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
+        try {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          if (isNaN(dateA) || isNaN(dateB)) {
+            console.error("Invalid date format found in proposals");
+            return 0;
+          }
+          return dateA - dateB;
+        } catch (error) {
+          console.error("Error sorting by date:", error);
+          return 0;
+        }
       } else if (sortOption.value === "date-descending") {
-        return (
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
+        try {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          if (isNaN(dateA) || isNaN(dateB)) {
+            console.error("Invalid date format found in proposals");
+            return 0;
+          }
+          return dateB - dateA;
+        } catch (error) {
+          console.error("Error sorting by date:", error);
+          return 0;
+        }
       }
       return 0;
     });
@@ -44,7 +66,7 @@ export default function ProposalListView({
 
   if (error) {
     return (
-      <div className="flex justify-center items-center py-12 text-red-500">
+      <div className="flex justify-center items-center py-12 text-red-500 dark:text-red-400">
         <p className="text-lg font-medium">
           Failed to load proposals: {error.message}
         </p>
@@ -53,105 +75,100 @@ export default function ProposalListView({
   }
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-3">
       {filteredAndSortedProposals.length > 0 ? (
-        filteredAndSortedProposals.map((proposal, index) => (
-          <motion.div
-            key={proposal.id}
-            initial={{ opacity: 0, x: -15 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: false, margin: "-40px" }}
-            transition={{
-              type: "spring",
-              stiffness: 400,
-              damping: 28,
-              duration: 0.3,
-            }}
-            whileHover={{
-              scale: 1.01,
-              boxShadow: "0 4px 8px rgba(0, 0, 0, 0.08)",
-              cursor: "pointer",
-            }}
-            className={`border rounded-md p-4 ${
-              index % 2 === 0 ? "bg-[#e8e8e8]" : "bg-white"
-            }`}
-          >
-            {" "}
-            <Link href={`/proposals/${proposal.id}`}>
-              <div className="font-bold text-xl">{proposal.name}</div>
-              <div className="flex items-center justify-between mt-1 gap-x-8">
-                <div className="text-sm text-black/50 line-clamp-3">
-                  {proposal.description}
+        filteredAndSortedProposals.map((proposal) => (
+          <Link key={proposal.id} href={`proposals/${proposal.id}`} className="block group">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                type: "spring",
+                stiffness: 300,
+                damping: 30,
+                duration: 0.3,
+              }}
+              className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm overflow-hidden transition-all duration-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 group-focus:ring-2 group-focus:ring-zinc-300 dark:group-focus:ring-zinc-700 group-focus:ring-offset-0"
+            >
+              <div className="flex flex-col md:flex-row">
+                <div className="relative h-32 w-full md:w-48 md:h-auto bg-zinc-100 dark:bg-zinc-800 shrink-0">
+                  <Image
+                    src={proposal.image || "/placeholder-image.jpg"}
+                    alt={proposal.name}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-                <ExternalLink className="h-8 w-8 mr-8" />
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                <div className="flex justify-between items-center mt-4">
-                  <div className="flex flex-wrap gap-2 max-w-full">
-                    {proposal.project_modules.slice(0, 4).map((category) => (
+                
+                <div className="p-5 w-full">
+                  <div className="flex justify-between items-start">
+                    <h3 className="text-lg font-semibold mb-1 text-zinc-900 dark:text-zinc-100">
+                      {proposal.name}
+                    </h3>
+                    <span className="text-xs font-medium text-zinc-400 dark:text-zinc-500 mt-1">
+                      {new Date(proposal.created_at).toLocaleDateString("en-US", {
+                        month: "2-digit",
+                        day: "2-digit",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  
+                  <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                    {proposal.description}
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {proposal.project_modules?.slice(0, 3).map((category) => (
                       <Badge
                         key={category.id}
                         variant="outline"
-                        className={`font-bold uppercase text-xs ${
-                          index % 2 === 0
-                            ? "border border-black/30 text-black"
-                            : "bg-none text-black"
-                        }`}
+                        className="font-semibold uppercase text-xs rounded-lg border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 px-2 py-0.5"
                       >
-                        {category.module.name}
+                        {category.module?.name || "Module"}
                       </Badge>
                     ))}
-                    {proposal.project_modules.length > 4 && (
+                    {proposal.project_modules?.length > 3 && (
                       <Badge
                         variant="outline"
-                        className={`font-bold uppercase text-xs ${
-                          index % 2 === 0
-                            ? "border border-black/30 text-black"
-                            : "bg-none text-black"
-                        }`}
+                        className="font-semibold uppercase text-xs rounded-lg border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 px-2 py-0.5"
                       >
-                        +{proposal.project_modules.length - 4} more
+                        +{proposal.project_modules.length - 3} more
                       </Badge>
                     )}
-                    <Badge
-                      variant="outline"
-                      className={`flex items-center gap-1 ${
-                        index % 2 === 0
-                          ? "border border-black/30 text-black"
-                          : "bg-none text-black"
-                      }`}
-                    >
-                      <span className="uppercase font-bold">Variables</span>
-                      <span
-                        className={`ml-1 h-4 w-4 rounded-sm text-xs flex items-center justify-center bg-black/50 text-primary-foreground`}
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-2">
+                      <Badge
+                        variant="outline"
+                        className="flex items-center gap-1 rounded-lg border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 px-2 py-0.5"
                       >
-                        {proposal.project_parameters?.length || 0}
-                      </span>
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`flex items-center gap-1 ${
-                        index % 2 === 0
-                          ? "border border-black/30 text-black"
-                          : "bg-none text-black"
-                      }`}
-                    >
-                      <span className="uppercase font-bold">Categories</span>
-                      <span
-                        className={`ml-1 h-4 w-4 rounded-sm text-xs flex items-center justify-center bg-black/50 text-primary-foreground`}
+                        <span className="uppercase font-semibold text-xs">Parameters</span>
+                        <span className="ml-1 h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700 text-xs text-zinc-700 dark:text-zinc-200 flex items-center justify-center">
+                          {proposal.project_parameters?.length || 0}
+                        </span>
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className="flex items-center gap-1 rounded-lg border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 px-2 py-0.5"
                       >
-                        {proposal.project_parameters?.length || 0}
-                      </span>
-                    </Badge>
+                        <span className="uppercase font-semibold text-xs">Modules</span>
+                        <span className="ml-1 h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700 text-xs text-zinc-700 dark:text-zinc-200 flex items-center justify-center">
+                          {proposal.project_modules?.length || 0}
+                        </span>
+                      </Badge>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-900 dark:group-hover:text-zinc-200 transition-colors" />
                   </div>
                 </div>
               </div>
-            </Link>
-          </motion.div>
+            </motion.div>
+          </Link>
         ))
       ) : (
-        <div className="col-span-3 py-8 text-center">
-          <p className="text-lg font-medium">
+        <div className="py-16 text-center rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm">
+          <p className="text-lg font-medium text-zinc-400 dark:text-zinc-500">
             No proposals found matching your search.
           </p>
         </div>
