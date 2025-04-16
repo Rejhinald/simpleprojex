@@ -4,11 +4,18 @@ import React, { useEffect, useState, useRef } from "react";
 import { Card, CardContent, CardTitle, CardDescription, Button } from "@/components/shared";
 import { Megaphone } from "lucide-react";
 
-interface ProposalStressProps {
-  theme: string;
+declare global {
+  interface Window {
+    loadCalendlyScript?: () => void;
+  }
 }
 
-const ProposalStress = ({ theme }: ProposalStressProps) => {
+interface ProposalStressProps {
+  theme: string;
+  calendlyReady?: boolean;
+}
+
+const ProposalStress = ({ theme, calendlyReady }: ProposalStressProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const [isClient, setIsClient] = useState(false); // ✅ Fix for SSR hydration mismatch
@@ -30,8 +37,8 @@ const ProposalStress = ({ theme }: ProposalStressProps) => {
   }, []);
 
   const openCalendlyPopup = () => {
-    if (typeof window !== "undefined" && (window as any).Calendly) {
-      (window as any).Calendly.initPopupWidget({
+    if (typeof window !== "undefined" && window.Calendly) {
+      window.Calendly.initPopupWidget({
         url: "https://calendly.com/avorino/simple-projex-demo",
       });
     }
@@ -72,8 +79,13 @@ const ProposalStress = ({ theme }: ProposalStressProps) => {
               size="lg"
               className="bg-[#e6a310] text-black hover:bg-[#203a53] hover:text-white font-bold uppercase tracking-wider shadow-lg rounded-full"
               onClick={openCalendlyPopup}
+              disabled={calendlyReady === false}
             >
-              Schedule a Demo Now!
+              {calendlyReady === false ? (
+                <span className="flex items-center gap-2"><span className="animate-spin rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></span>Loading…</span>
+              ) : (
+                "Schedule a Demo Now!"
+              )}
             </Button>
           </CardContent>
         </Card>

@@ -10,13 +10,37 @@ import Footer from "@/components/features/landing-page/footer";
 import TimeSaving from "@/components/features/landing-page/time-saving";
 import Header from "@/components/features/landing-page/header";
 import { useRouter } from "next/navigation";
-import Head from "next/head";
+
+declare global {
+  interface Window {
+    Calendly?: any;
+  }
+}
 
 export default function LandingPage() {
   const router = useRouter();
   const [scrolling, setScrolling] = useState(false);
   const [theme, setTheme] = useState("light");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [calendlyReady, setCalendlyReady] = useState(false);
+
+  // Use the same successful Calendly implementation from the reference files
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Add Calendly CSS directly
+      const link = document.createElement("link");
+      link.href = "https://assets.calendly.com/assets/external/widget.css";
+      link.rel = "stylesheet";
+      document.head.appendChild(link);
+
+      // Add Calendly Script directly
+      const script = document.createElement("script");
+      script.src = "https://assets.calendly.com/assets/external/widget.js";
+      script.async = true;
+      script.onload = () => setCalendlyReady(true);
+      document.body.appendChild(script);
+    }
+  }, []);
 
   // Only access localStorage and document in useEffect
   useEffect(() => {
@@ -64,17 +88,6 @@ export default function LandingPage() {
 
   return (
     <>
-      <Head>
-        <link
-          href="https://assets.calendly.com/assets/external/widget.css"
-          rel="stylesheet"
-        />
-        <script
-          src="https://assets.calendly.com/assets/external/widget.js"
-          type="text/javascript"
-          async
-        />
-      </Head>
       <div
         className={`flex flex-col overflow-hidden bg-${
           theme === "dark" ? "[#191919]" : "white"
@@ -88,7 +101,7 @@ export default function LandingPage() {
         />
         {/* Hero Section */}
         <section className="relative min-h-screen">
-          <HeroSection theme={theme} />
+          <HeroSection theme={theme} calendlyReady={calendlyReady} />
         </section>
         <hr className={`border-t-3 border-${theme === "dark" ? "white" : "black"}`} />
         <section
@@ -99,7 +112,7 @@ export default function LandingPage() {
           }}
           className="transition-all duration-1000 ease-in-out mt-12"
         >
-          <SimpleSteps theme={theme} showLogin={false} />
+          <SimpleSteps theme={theme} showLogin={false} calendlyReady={calendlyReady} />
         </section>
         <hr className={`border-t-3 border-${theme === "dark" ? "white" : "black"}`} />
         <motion.div
@@ -109,7 +122,7 @@ export default function LandingPage() {
           animate={{ opacity: scrolling ? 1 : 0, y: scrolling ? 0 : 40 }}
           transition={{ duration: 1, ease: "easeInOut" }}
         >
-          <Succeed theme={theme} showLogin={false} />
+          <Succeed theme={theme} showLogin={false} calendlyReady={calendlyReady} />
         </motion.div>
         <hr className={`border-t-3 border-${theme === "dark" ? "white" : "black"}`} />
         <motion.div
@@ -119,7 +132,7 @@ export default function LandingPage() {
           animate={{ opacity: scrolling ? 1 : 0, y: scrolling ? 0 : 40 }}
           transition={{ duration: 1, ease: "easeInOut" }}
         >
-          <CountUp theme={theme} />
+          <CountUp theme={theme} calendlyReady={calendlyReady} />
         </motion.div>
         <hr className={`border-t-3 border-${theme === "dark" ? "white" : "black"}`} />
         <motion.div
@@ -129,7 +142,7 @@ export default function LandingPage() {
           animate={{ opacity: scrolling ? 1 : 0, y: scrolling ? 0 : 40 }}
           transition={{ duration: 1, ease: "easeInOut" }}
         >
-          <Proposal theme={theme} />
+          <Proposal theme={theme} calendlyReady={calendlyReady} />
         </motion.div>
         <hr className={`border-t-3 border-${theme === "dark" ? "white" : "black"}`} />
         <motion.div
@@ -139,7 +152,7 @@ export default function LandingPage() {
           animate={{ opacity: scrolling ? 1 : 0, y: scrolling ? 0 : 40 }}
           transition={{ duration: 1, ease: "easeInOut" }}
         >
-          <TimeSaving theme={theme} />
+          <TimeSaving theme={theme} calendlyReady={calendlyReady} />
         </motion.div>
         <hr className={`border-t-3 border-${theme === "dark" ? "white" : "black"}`} />
         <motion.div

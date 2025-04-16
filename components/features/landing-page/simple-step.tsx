@@ -4,12 +4,19 @@ import Image from "next/image";
 import { Card, CardContent, CardTitle, CardDescription, Button } from "@/components/shared";
 import { Calendar, UserPlus, Settings } from "lucide-react";
 
+declare global {
+  interface Window {
+    loadCalendlyScript?: () => void;
+  }
+}
+
 interface SimpleStepsProps {
   theme: string;
   showLogin: boolean;
+  calendlyReady: boolean;
 }
 
-const SimpleSteps = ({ theme, showLogin }: SimpleStepsProps) => {
+const SimpleSteps = ({ theme, showLogin, calendlyReady }: SimpleStepsProps) => {
   const images = ["/demo.jpg", "/login.jpg"];
   const [isFirstImageFront, setIsFirstImageFront] = useState(true);
 
@@ -21,8 +28,8 @@ const SimpleSteps = ({ theme, showLogin }: SimpleStepsProps) => {
   }, []);
 
   const openCalendlyPopup = () => {
-    if (typeof window !== "undefined" && (window as any).Calendly) {
-      (window as any).Calendly.initPopupWidget({
+    if (typeof window !== "undefined" && window.Calendly) {
+      window.Calendly.initPopupWidget({
         url: "https://calendly.com/avorino/simple-projex-demo",
       });
     }
@@ -43,7 +50,7 @@ const SimpleSteps = ({ theme, showLogin }: SimpleStepsProps) => {
               className="absolute inset-0 w-full h-full"
             >
               <Image
-                src={isFirstImageFront ? images[0].replace('.jpg', '.webp') : images[1].replace('.jpg', '.webp')}
+                src={isFirstImageFront ? images[0] : images[1]}
                 alt="Demo Step"
                 fill
                 className="object-cover rounded-2xl"
@@ -94,8 +101,9 @@ const SimpleSteps = ({ theme, showLogin }: SimpleStepsProps) => {
             size="lg"
             className="bg-[#e6a310] text-black hover:bg-[#203a53] hover:text-white font-bold uppercase tracking-wider shadow-lg rounded-full"
             onClick={openCalendlyPopup}
+            disabled={!calendlyReady}
           >
-            Schedule a Demo
+            {calendlyReady ? "Schedule a Demo" : <span className="flex items-center gap-2"><span className="animate-spin rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></span>Loading…</span>}
           </Button>
         </CardContent>
       </Card>

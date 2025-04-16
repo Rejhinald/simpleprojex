@@ -4,9 +4,16 @@ import Image from "next/image";
 import { Card, CardContent, CardTitle, CardDescription, Button } from "@/components/shared";
 import { BadgeCheck, TrendingUp, HardHat } from "lucide-react";
 
+declare global {
+  interface Window {
+    loadCalendlyScript?: () => void;
+  }
+}
+
 interface SucceedProps {
   theme: string;
   showLogin: boolean;
+  calendlyReady: boolean;
 }
 
 const succeedCards = [
@@ -27,10 +34,10 @@ const succeedCards = [
   },
 ];
 
-const Succeed = ({ theme, showLogin }: SucceedProps) => {
+const Succeed = ({ theme, showLogin, calendlyReady }: SucceedProps) => {
   const openCalendlyPopup = () => {
-    if (typeof window !== "undefined" && (window as any).Calendly) {
-      (window as any).Calendly.initPopupWidget({
+    if (typeof window !== "undefined" && window.Calendly) {
+      window.Calendly.initPopupWidget({
         url: "https://calendly.com/avorino/simple-projex-demo",
       });
     }
@@ -67,7 +74,7 @@ const Succeed = ({ theme, showLogin }: SucceedProps) => {
             <Card className="relative h-[420px] flex flex-col overflow-hidden group hover:scale-105 transition-transform duration-500">
               <div className="relative w-full h-[220px]">
                 <Image
-                  src={item.img.endsWith('.png') ? item.img.replace('.png', '.webp') : item.img}
+                  src={item.img}
                   alt={item.text}
                   fill
                   sizes="(max-width: 768px) 100vw, 33vw"
@@ -99,8 +106,9 @@ const Succeed = ({ theme, showLogin }: SucceedProps) => {
           size="lg"
           className="bg-[#e6a310] text-black hover:bg-[#203a53] hover:text-white font-bold uppercase tracking-wider shadow-lg rounded-full"
           onClick={openCalendlyPopup}
+          disabled={!calendlyReady}
         >
-          Schedule a Demo
+          {calendlyReady ? "Schedule a Demo" : <span className="flex items-center gap-2"><span className="animate-spin rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></span>Loading…</span>}
         </Button>
       </motion.div>
     </section>

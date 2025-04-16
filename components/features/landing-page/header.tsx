@@ -21,14 +21,13 @@ export default function Header({
   const [scrolling, setScrolling] = useState(false);
   const router = useRouter();
 
+  // Simplified scroll handler - no preloading needed for SVG
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const handleScroll = () => {
-        setScrolling(window.scrollY > 50);
-      };
-      window.addEventListener("scroll", handleScroll);
-      return () => window.removeEventListener("scroll", handleScroll);
-    }
+    const handleScroll = () => {
+      setScrolling(window.scrollY > 50);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
@@ -42,28 +41,32 @@ export default function Header({
       }`}
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center relative">
-        {/* Left Side: Logo */}
+        {/* Left Side: Logo - Using SVG for better performance */}
         <div className="flex items-center">
           <div
-            className={`transition-all duration-300 ${
+            className={`transition-all duration-300 flex items-center ${
               scrolling ? "h-16" : "h-28"
             }`}
           >
             <Link href="/">
-              <img
-                src={
-                  theme === "dark" || !scrolling
-                    ? "/logo-no-bg-dark mode.png"
-                    : "/logo-no-bg-light mode.png"
-                }
-                alt="Simple Projex Logo"
-                className={`transition-all duration-500 ${
-                  scrolling ? "h-12 mt-2" : "h-28 mt-3"
-                }`}
-              />
+              <div className={`transition-all duration-300 relative ${
+                scrolling ? "w-[120px] h-12" : "w-[240px] h-16"
+              }`}>
+                <img
+                  src="/icons/logo.svg"
+                  alt="Simple Projex Logo"
+                  className={`transition-all duration-300 w-full h-full ${
+                    scrolling ? "filter-none" : "filter-white"
+                  }`}
+                  style={{ 
+                    filter: scrolling ? 'invert(0%)' : 'invert(100%)'
+                  }}
+                />
+              </div>
             </Link>
           </div>
         </div>
+        
         {/* Right Side: Single row for contact info, theme toggle, and login */}
         <div className="hidden lg:flex items-center space-x-6">
           {/* Contact Info */}

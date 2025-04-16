@@ -11,11 +11,18 @@ const pieData = [
   { name: "Awards", value: 39, color: "#f8b400" },
 ];
 
-interface CountProps {
-  theme: string;
+declare global {
+  interface Window {
+    loadCalendlyScript?: () => void;
+  }
 }
 
-const Count = ({ theme }: CountProps) => {
+interface CountProps {
+  theme: string;
+  calendlyReady?: boolean;
+}
+
+const Count = ({ theme, calendlyReady }: CountProps) => {
   const [activeData, setActiveData] = useState(
     pieData.map((d) => ({ ...d, value: 0 }))
   );
@@ -88,16 +95,10 @@ const Count = ({ theme }: CountProps) => {
   }, []);
 
   const openCalendlyPopup = () => {
-    if (typeof window !== "undefined" && (window as any).Calendly) {
-      try {
-        (window as any).Calendly.initPopupWidget({
-          url: "https://calendly.com/avorino/simple-projex-demo",
-        });
-      } catch (error) {
-        console.error("Failed to open Calendly popup:", error);
-      }
-    } else {
-      console.warn("Calendly is not available.");
+    if (typeof window !== "undefined" && window.Calendly) {
+      window.Calendly.initPopupWidget({
+        url: "https://calendly.com/avorino/simple-projex-demo",
+      });
     }
   };
 
@@ -116,8 +117,13 @@ const Count = ({ theme }: CountProps) => {
             size="lg"
             className="bg-[#e6a310] text-black hover:bg-[#203a53] hover:text-white font-bold uppercase tracking-wider shadow-lg rounded-full"
             onClick={openCalendlyPopup}
+            disabled={calendlyReady === false}
           >
-            Schedule a Demo
+            {calendlyReady === false ? (
+              <span className="flex items-center gap-2"><span className="animate-spin rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></span>Loading…</span>
+            ) : (
+              "Schedule a Demo"
+            )}
           </Button>
         </CardContent>
       </Card>

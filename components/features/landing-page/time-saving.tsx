@@ -3,8 +3,15 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/shared";
 
+declare global {
+  interface Window {
+    loadCalendlyScript?: () => void;
+  }
+}
+
 interface TimeSavingProps {
   theme: string;
+  calendlyReady: boolean;
 }
 
 const cardItems = [
@@ -14,10 +21,10 @@ const cardItems = [
   { img: "/competitive.jpg", text: "Stay competitive in a rapidly evolving market." },
 ];
 
-const TimeSaving = ({ theme }: TimeSavingProps) => {
+const TimeSaving = ({ theme, calendlyReady }: TimeSavingProps) => {
   const openCalendlyPopup = () => {
-    if (typeof window !== "undefined" && (window as any).Calendly) {
-      (window as any).Calendly.initPopupWidget({
+    if (typeof window !== "undefined" && window.Calendly) {
+      window.Calendly.initPopupWidget({
         url: "https://calendly.com/avorino/simple-projex-demo",
       });
     }
@@ -64,7 +71,7 @@ const TimeSaving = ({ theme }: TimeSavingProps) => {
           >
             <Card className="relative h-[550px] overflow-hidden group hover:scale-105 transition-transform duration-500 p-0">
               <Image
-                src={item.img.endsWith('.jpg') ? item.img.replace('.jpg', '.webp') : item.img}
+                src={item.img}
                 alt={item.text}
                 fill
                 sizes="(max-width: 768px) 100vw, 25vw"
@@ -98,8 +105,9 @@ const TimeSaving = ({ theme }: TimeSavingProps) => {
               ? "text-black hover:bg-[#203a53] hover:text-white"
               : "text-[#191919] hover:bg-[#203a53] hover:text-white"
           } px-8 font-sans tracking-wider py-3 text-lg font-semibold uppercase transition duration-300 rounded-full shadow-lg`}
+          disabled={!calendlyReady}
         >
-          Schedule a Demo
+          {calendlyReady ? "Schedule a Demo" : <span className="flex items-center gap-2"><span className="animate-spin rounded-full border-2 border-t-2 border-gray-200 h-5 w-5"></span>Loading…</span>}
         </button>
       </motion.div>
     </section>
