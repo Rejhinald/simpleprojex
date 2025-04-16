@@ -67,12 +67,13 @@ const Succeed = ({ theme, showLogin }: SucceedProps) => {
             <Card className="relative h-[420px] flex flex-col overflow-hidden group hover:scale-105 transition-transform duration-500">
               <div className="relative w-full h-[220px]">
                 <Image
-                  src={item.img}
+                  src={item.img.endsWith('.png') ? item.img.replace('.png', '.webp') : item.img}
                   alt={item.text}
                   fill
                   sizes="(max-width: 768px) 100vw, 33vw"
                   className="object-cover"
                   priority={index === 0}
+                  loading={index === 0 ? undefined : "lazy"}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
                 <div className="absolute top-4 left-4 z-20 bg-background/80 rounded-full p-2 shadow-lg">

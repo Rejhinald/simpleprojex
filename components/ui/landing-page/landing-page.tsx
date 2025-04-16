@@ -22,14 +22,14 @@ export default function LandingPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedTheme = localStorage.getItem("theme");
+      // Always default to light mode unless user explicitly chose dark
       let defaultTheme = "light";
       if (storedTheme) {
         setTheme(storedTheme);
         defaultTheme = storedTheme;
-      } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        defaultTheme = "dark";
-        setTheme("dark");
-        localStorage.setItem("theme", "dark");
+      } else {
+        setTheme("light");
+        localStorage.setItem("theme", "light");
       }
       document.documentElement.classList.toggle("dark", defaultTheme === "dark");
     }

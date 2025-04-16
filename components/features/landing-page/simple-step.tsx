@@ -43,11 +43,12 @@ const SimpleSteps = ({ theme, showLogin }: SimpleStepsProps) => {
               className="absolute inset-0 w-full h-full"
             >
               <Image
-                src={isFirstImageFront ? images[0] : images[1]}
+                src={isFirstImageFront ? images[0].replace('.jpg', '.webp') : images[1].replace('.jpg', '.webp')}
                 alt="Demo Step"
                 fill
                 className="object-cover rounded-2xl"
                 priority
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
             </motion.div>

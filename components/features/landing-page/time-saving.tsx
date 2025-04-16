@@ -64,12 +64,13 @@ const TimeSaving = ({ theme }: TimeSavingProps) => {
           >
             <Card className="relative h-[550px] overflow-hidden group hover:scale-105 transition-transform duration-500 p-0">
               <Image
-                src={item.img}
+                src={item.img.endsWith('.jpg') ? item.img.replace('.jpg', '.webp') : item.img}
                 alt={item.text}
                 fill
                 sizes="(max-width: 768px) 100vw, 25vw"
                 className="object-cover"
                 priority={index < 2}
+                loading={index < 2 ? undefined : "lazy"}
               />
               {/* Gradient overlay for readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent z-10" />
